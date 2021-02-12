@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="generator" content="pdoc {{ __version__ }}" />
+	<title>{% block title %}{% endblock %}</title>
+	{% block favicon %}
+		<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{% filter urlencode %}{% include "favicon.svg" %}{% endfilter %}"/>
+	{% endblock %}
+
+	{% block head %}{% endblock %}
+	{% block style %}
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vscode/codicons@0.0.26/dist/codicon.css" integrity="sha256-D17kYLSjgWaTmBxd3glbT+Yjh0hpUhQdPmulynXYn2U=" crossorigin="anonymous">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css" integrity="sha512-YWzhKL2whUzgiheMoBFwW8CKV4qpHQAEuvilg9FAn5VJUDwKZZxkJNuGM4XkWuk94WCrrwslk8yWNGmY1EduTA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/firacode/5.2.0/fira_code.min.css" integrity="sha512-MbysAYimH1hH2xYzkkMHB6MqxBqfP0megxsCLknbYqHVwXTCg9IqHbk+ZP/vnhO8UEW6PaXAkKe2vQ+SWACxxA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+		{% filter minify_css %}
+			<style>{% include 'css/main.css' %}</style>
+		{% endfilter %}
+	{% endblock %}
+</head>
+<body>{% block body %}{% endblock %}</body>
+</html>
