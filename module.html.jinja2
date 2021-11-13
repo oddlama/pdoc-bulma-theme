@@ -218,7 +218,7 @@
 {% defaultmacro navlist(xs, label=None) -%}
     {% if xs %}
         {% if label %}
-        <p class="menu-label">{{ label }}</p>
+		<div class="divider mb-3 is-left">{{ label }}</div>
         {% endif %}
         <ul class="menu-list p-0 m-0">
             {% for m in xs %}
@@ -237,7 +237,7 @@
 	{% endif %}
     {% if xs %}
         {% if label and nestlevel == 0 %}
-			<p class="menu-label">{{ label }}</p>
+			<div class="divider mb-3 is-left">{{ label }}</div>
         {% endif %}
         <ul class="menu-list p-0 m-0 {{ "ml-5" if nestlevel > 0 else "" }}" style="border: 0">
             {% for x in xs %}
@@ -263,7 +263,7 @@
     {% endcall %}
 
     {% call(m) member_navlist_filter(xs, type="class", sort="name", label="Classes", parent=parent, nestlevel=nestlevel) %}
-		<li class="{{ hide_private(m) }}">
+		<li class="mt-3 {{ hide_private(m) }}">
 			<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
             {{ member_navlist(m.own_members, parent=m, nestlevel=nestlevel+1) }}
         </li>
@@ -284,7 +284,7 @@
 
 				{% block nav_search_box %}
 					{% if search and all_modules|length > 1 %}
-						<p class="control has-icons-right">
+						<p class="control has-icons-right mb-5">
 							<input class="input" type="search" placeholder="Search..." required>
 							<span class="icon is-small is-right">
 								<i class="fa-solid fa-magnifying-glass"></i>
@@ -297,7 +297,7 @@
 					{# TODO: Test this #}
 					{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
 					{% if index %}
-						<p class="menu-label">Contents</p>
+						<div class="divider mb-3 is-left">Contents</div>
 						{{ index | safe }}
 					{% endif %}
 				{% endblock %}
@@ -344,14 +344,6 @@
 				{% block nav_member_list %}
 					{{ member_navlist(module.members.values()) }}
 				{% endblock %}
-
-				{% block nav_footer %}
-					{% if footer_text %}
-					<footer>{{ footer_text }}</footer>
-					{% endif %}
-				{% endblock %}
-
-				{{ attribution() }}
 			</div>
 		</nav>
 	{% endblock %}
@@ -362,8 +354,8 @@
 			<section class="section">
 				{{ breadcrumbs() }}
 				{% block edit_button %}
-					{% if edit_url %}
-						<a class="pdoc-button git-button" href="{{ edit_url }}">Edit on GitHub</a>
+					{% if True or edit_url %}
+						<button class="button" href="{{ edit_url }}">Edit on GitHub</button>
 					{% endif %}
 				{% endblock %}
 				{{ docstring(module) }}
@@ -400,10 +392,11 @@
 {% endblock %}
 {% block body %}
     <div class="columns is-multiline is-fullheight">
-		{# TODO: if long items are in the sidebar, this shit wraps around too early. I want a reasonable automatic size limit for the sidebar.#}
+		{# TODO: if long items are in the sidebar, this shit wraps around too early. I want a reasonable automatic size limit for the sidebar. #}
 		<div class="column">
 			{{ define_nav() }}
 		</div>
+		{# TODO: after wraparound use all the space ffs #}
 		<div class="column is-8">
 			<main>
 				{{ define_main_content() }}
@@ -418,4 +411,11 @@
             {% include "search.html.jinja2" %}
         {% endif %}
     {% endblock %}
+
+	{% block footer %}
+		<footer>
+			{{- footer_text or "" -}}
+			{{ attribution() }}
+		</footer>
+	{% endblock %}
 {% endblock %}
