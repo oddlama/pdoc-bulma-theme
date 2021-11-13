@@ -86,56 +86,6 @@
         <div class="docstring">{{ var.docstring | to_markdown | to_html | linkify(namespace=var.qualname) }}</div>
     {% endif %}
 {% enddefaultmacro %}
-{% defaultmacro icontext(icon, name, classes=None) -%}
-    <span class="icon-text is-flex-wrap-nowrap{{(" " + classes) if classes else "" }}">
-        <span class="icon"><i class="{{icon}}"></i></span>
-		<span>{{name}}</span>
-    </span>
-{% enddefaultmacro %}
-{% defaultmacro symbol_icontext(doc) -%}
-	{% if doc.type == "module" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.qualname %}
-	{% elif doc.type == "variable" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.name %}
-	{% elif doc.type == "function" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.name %}
-	{% elif doc.type == "class" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.name %}
-	{% else %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.name %}
-	{% endif %}
-	{% set classes = ["is-family-monospace"] %}
-	{% if is_private(doc) %}
-		{% set _ = classes.append("has-text-grey-light") %}
-	{% endif %}
-	<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
-        <span class="icon"><i class="{{icon}}"></i></span>
-		<span>{{name}}</span>
-    </span>
-{% enddefaultmacro %}
-{# TODO: delete comment
-{% for m in members if is_public(m) | trim %}
-    <li>
-        {% if m.type == "class" %}
-            <a class="class" href="#{{ m.qualname }}">{{ m.qualname }}</a>
-            {% if m.own_members %}
-                {{ nav_members(m.own_members) | indent(12) }}
-            {% endif %}
-        {% elif m.type == "module" %}
-            <a class="module" href="#{{ m.name }}">{{ m.name }}</a>
-        {% elif m.name == "__init__" %}
-            <a class="function" href="#{{ m.qualname }}">{{ m.qualname.split(".")[-2] }}</a>
-        {% else %}
-            <a class="{{ m.type }}" href="#{{ m.qualname }}">{{ m.name }}</a>
-        {% endif %}
-    </li>
-{% endfor %}
-#}
 {% defaultmacro is_public(doc) %}
 	{# This macro has an unfortunate naming, and the name is hard-coded into
 	some internal logic. Our intention is to have is_public return true
@@ -211,6 +161,41 @@
         {% endfor %}
     </h1>
 {% enddefaultmacro %}
+{% defaultmacro icontext(icon, name, classes=None) -%}
+    <span class="icon-text is-flex-wrap-nowrap{{(" " + classes) if classes else "" }}">
+        <span class="icon"><i class="{{icon}}"></i></span>
+		<span>{{name}}</span>
+    </span>
+{% enddefaultmacro %}
+{% defaultmacro symbol_icontext(doc) -%}
+	{% if doc.type == "module" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.qualname %}
+	{% elif doc.type == "variable" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.name %}
+	{% elif doc.type == "function" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.qualname.split(".")[-2] if doc.name == "__init__" else doc.name %}
+	{% elif doc.type == "class" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.name %}
+	{% else %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.name %}
+	{% endif %}
+	{% set classes = ["is-family-monospace"] %}
+	{% if is_private(doc) %}
+		{% set _ = classes.append("has-text-grey-light") %}
+	{% endif %}
+	<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
+        <span class="icon"><i class="{{icon}}"></i></span>
+		<span>{{name}}</span>
+		{% if doc.type == "function" %}
+			<span class="has-text-grey-light">()</span>
+		{% endif %}
+    </span>
+{% enddefaultmacro %}
 {% defaultmacro navlist(xs, label=None) -%}
     {% if xs %}
         {% if label %}
@@ -223,40 +208,39 @@
         </ul>
     {% endif %}
 {%- enddefaultmacro %}
-{% defaultmacro member_navlist_filter(members, type, label=None) -%}
+{% defaultmacro member_navlist_filter(members, type, label=None, nestlevel=0) -%}
 	{% set xs = [] %}
 	{% for x in members if x.type == type and is_public(x) %}
 		{% set _ = xs.append(x) %}
 	{% endfor %}
     {% if xs %}
-        {% if label %}
-        <p class="menu-label">{{ label }}</p>
+        {% if label and nestlevel == 0 %}
+			<p class="menu-label">{{ label }}</p>
         {% endif %}
-        <ul class="menu-list">
+        <ul class="menu-list p-0 m-0 {{ "ml-5" if nestlevel > 0 else "" }}" style="border: 0">
             {% for x in xs | sort(attribute='name') %}
                 {{ caller(x) }}
             {% endfor %}
         </ul>
     {% endif %}
 {%- enddefaultmacro %}
-{% defaultmacro member_navlist(xs) -%}
-    {% call(m) member_navlist_filter(xs, type="module", label="Modules") %}
+{% defaultmacro member_navlist(xs, nestlevel=0) -%}
+    {% call(m) member_navlist_filter(xs, type="module", label="Modules", nestlevel=nestlevel) %}
         <li><a href="#{{ m.name }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
     {% endcall %}
 
-{# TODO: _ -> Private variables section #}
-    {% call(m) member_navlist_filter(xs, type="variable", label="Variables") %}
+    {% call(m) member_navlist_filter(xs, type="variable", label="Variables", nestlevel=nestlevel) %}
         <li><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
     {% endcall %}
 
-    {% call(m) member_navlist_filter(xs, type="function", label="Functions") %}
+    {% call(m) member_navlist_filter(xs, type="function", label="Functions", nestlevel=nestlevel) %}
         <li><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
     {% endcall %}
 
-    {% call(m) member_navlist_filter(xs, type="class", label="Classes") %}
+    {% call(m) member_navlist_filter(xs, type="class", label="Classes", nestlevel=nestlevel) %}
 		<li>
 			<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
-            {{ member_navlist(m.own_members) }}
+            {{ member_navlist(m.own_members, nestlevel=nestlevel+1) }}
         </li>
     {% endcall %}
 {%- enddefaultmacro %}
