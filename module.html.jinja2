@@ -4,6 +4,7 @@
 	{{ super() | safe }}
     {% filter minify_css %}
         <style>{% include 'syntax-highlighting.css' %}</style>
+        <style>.pdoc-is-private {display: none; }</style>
     {% endfilter %}
 {% endblock %}
 {% defaultmacro bases(cls) %}
@@ -167,22 +168,27 @@
 		<span>{{name}}</span>
     </span>
 {% enddefaultmacro %}
-{% defaultmacro symbol_icontext(doc) -%}
+{% defaultmacro symbol_icontext(doc, name=None) -%}
 	{% if doc.type == "module" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.qualname %}
+		{% set icon = "has-text- fa-solid fa-cubes" %}
+		{% set dname = doc.qualname or doc.name %}
 	{% elif doc.type == "variable" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.name %}
+		{% set icon = "fa-solid fa-dice-d6" %}
+		{% set dname = doc.name %}
 	{% elif doc.type == "function" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.qualname.split(".")[-2] if doc.name == "__init__" else doc.name %}
+		{% if doc.name == "__init__" %}
+			{% set icon = "fa-regular fa-circle-dot" %}
+			{% set dname = doc.qualname.split(".")[-2] %}
+		{% else %}
+			{% set icon = "fa-solid fa-circle-dot" %}
+			{% set dname = doc.name %}
+		{% endif %}
 	{% elif doc.type == "class" %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.name %}
+		{% set icon = "fa-solid fa-diagram-project" %}
+		{% set dname = doc.name %}
 	{% else %}
-		{% set icon = "fa-solid fa-cube" %}
-		{% set name = doc.name %}
+		{% set icon = "fa-solid fa-circle-question" %}
+		{% set dname = doc.name %}
 	{% endif %}
 	{% set classes = ["is-family-monospace"] %}
 	{% if is_private(doc) %}
@@ -190,7 +196,7 @@
 	{% endif %}
 	<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
         <span class="icon"><i class="{{icon}}"></i></span>
-		<span>{{name}}</span>
+		<span>{{name or dname}}</span>
 		{% if doc.type == "function" %}
 			<span class="has-text-grey-light">()</span>
 		{% endif %}
@@ -201,46 +207,52 @@
         {% if label %}
         <p class="menu-label">{{ label }}</p>
         {% endif %}
-        <ul class="menu-list">
+        <ul class="menu-list p-0 m-0">
             {% for m in xs %}
                 {{ caller(m) }}
             {% endfor %}
         </ul>
     {% endif %}
 {%- enddefaultmacro %}
-{% defaultmacro member_navlist_filter(members, type, label=None, nestlevel=0) -%}
+{% defaultmacro member_navlist_filter(members, type, sort=None, label=None, parent=None, nestlevel=0) -%}
 	{% set xs = [] %}
 	{% for x in members if x.type == type and is_public(x) %}
 		{% set _ = xs.append(x) %}
 	{% endfor %}
+    {% if sort %}
+		{% set xs = xs | sort(attribute=sort) %}
+	{% endif %}
     {% if xs %}
         {% if label and nestlevel == 0 %}
 			<p class="menu-label">{{ label }}</p>
         {% endif %}
         <ul class="menu-list p-0 m-0 {{ "ml-5" if nestlevel > 0 else "" }}" style="border: 0">
-            {% for x in xs | sort(attribute='name') %}
+            {% for x in xs %}
                 {{ caller(x) }}
             {% endfor %}
         </ul>
     {% endif %}
 {%- enddefaultmacro %}
-{% defaultmacro member_navlist(xs, nestlevel=0) -%}
-    {% call(m) member_navlist_filter(xs, type="module", label="Modules", nestlevel=nestlevel) %}
-        <li><a href="#{{ m.name }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+{% defaultmacro hide_private(doc) -%}
+	{{ 'pdoc-is-private' if is_private(doc) else '' }}
+{%- enddefaultmacro %}
+{% defaultmacro member_navlist(xs, parent=None, nestlevel=0) -%}
+    {% call(m) member_navlist_filter(xs, type="module", sort="name", label="Modules", parent=parent, nestlevel=nestlevel) %}
+        <li class="{{ hide_private(m) }}"><a href="#{{ m.name }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
     {% endcall %}
 
-    {% call(m) member_navlist_filter(xs, type="variable", label="Variables", nestlevel=nestlevel) %}
-        <li><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+    {% call(m) member_navlist_filter(xs, type="variable", label="Variables", parent=parent, nestlevel=nestlevel) %}
+        <li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
     {% endcall %}
 
-    {% call(m) member_navlist_filter(xs, type="function", label="Functions", nestlevel=nestlevel) %}
-        <li><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+    {% call(m) member_navlist_filter(xs, type="function", sort="name", label="Functions", parent=parent, nestlevel=nestlevel) %}
+        <li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
     {% endcall %}
 
-    {% call(m) member_navlist_filter(xs, type="class", label="Classes", nestlevel=nestlevel) %}
-		<li>
+    {% call(m) member_navlist_filter(xs, type="class", sort="name", label="Classes", parent=parent, nestlevel=nestlevel) %}
+		<li class="{{ hide_private(m) }}">
 			<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
-            {{ member_navlist(m.own_members, nestlevel=nestlevel+1) }}
+            {{ member_navlist(m.own_members, parent=m, nestlevel=nestlevel+1) }}
         </li>
     {% endcall %}
 {%- enddefaultmacro %}
@@ -293,10 +305,13 @@
 						{% endif %}
 
                         {% call(m) navlist(module.submodules, label="Submodules") %}
-                            <li>{{ m.taken_from | link(text=symbol_icontext(
-                                icon='fa-solid fa-cube',
-                                name=m.name)) }}
-                            </li>
+							{# TODO: This is really awful. But we require a better link() function to solve it. #}
+							{# TODO: Maybe only use normal name not qualname? #}
+                            {% set lnk = m.taken_from | link %}
+                            {% set a_tag, rest = lnk.split('">') %}
+                            {% set _, href = a_tag.split('href="') %}
+                            {% set name, _ = rest.split('</a>') %}
+							<li class="{{ hide_private(m) }}"><a href="{{ href }}" class="p-1">{{ symbol_icontext(m, name=name) }}</a></li>
                         {% endcall %}
 
                         {{ member_navlist(module.members.values()) }}
