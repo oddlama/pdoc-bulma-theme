@@ -146,15 +146,15 @@
         </details>
     {% endif %}
 {% enddefaultmacro %}
-{% defaultmacro breadcrumbs() %}
-	<nav class="breadcrumb" aria-label="breadcrumbs">
+{% macro breadcrumbs() %}
+	<nav class="level breadcrumb" aria-label="breadcrumbs">
 		<ul>
 			{% set parts = module.modulename.split(".") %}
 			<li class="{{ 'is-active' if not parts }}">
 				<a href="{{ "../" * module.modulename.count(".") }}index.html">
-					<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
+					<span class="icon-text is-flex-wrap-nowrap">
 						<span class="icon"><i class="fa-solid fa-list-ul"></i></span>
-						<span>Index</span>
+						<span class="is-family-code">Index</span>
 					</span>
 				</a>
 			</li>
@@ -165,24 +165,31 @@
 					{% set href = "./" + ("../" * loop.revindex0) + part + ".html" %}
 					{%- endif -%}
 					<a href="{{ href or "#" }}"{{ 'aria-current="page"' if not loop.nextitem else '' }}>
-						<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
+						<span class="icon-text is-flex-wrap-nowrap">
 							<span class="icon"><i class="fa-solid fa-cubes"></i></span>
-							<span>{{part}}</span>
+							<span class="is-family-code">{{part}}</span>
 						</span>
 					</a>
 				</li>
 			{% endfor %}
 		</ul>
+		{% block edit_button %}
+			{% if edit_url %}
+				<div class="level-right">
+					<button class="button is-small is-link is-outlined" href="{{ edit_url }}">
+						<span class="icon"><i class="fa-brands fa-github"></i></span>
+						<span>Edit</span>
+					</button>
+				</div>
+			{% endif %}
+		{% endblock %}
 	</nav>
-{% enddefaultmacro %}
-{% defaultmacro icontext(icon, name, classes=None) -%}
-    <span class="icon-text is-flex-wrap-nowrap {{ classes or "" }}">
-        <span class="icon"><i class="{{icon}}"></i></span>
-		<span>{{name}}</span>
-    </span>
-{% enddefaultmacro %}
+{% endmacro %}
 {% defaultmacro symbol_icontext(doc, name=None) -%}
-	{% if doc.type == "module" %}
+	{% if doc.type == "index" %}
+		{% set icon = "fa-solid fa-list-ul" %}
+		{% set dname = doc.name %}
+	{% elif doc.type == "module" %}
 		{% set icon = "fa-solid fa-cubes" %}
 		{% set dname = doc.qualname or doc.name %}
 	{% elif doc.type == "variable" %}
@@ -203,16 +210,17 @@
 		{% set icon = "fa-solid fa-circle-question" %}
 		{% set dname = doc.name %}
 	{% endif %}
-	{% set classes = ["is-family-monospace"] %}
+	{% set classes = [] %}
 	{% if is_private(doc) %}
 		{% set _ = classes.append("has-text-grey-light") %}
 	{% endif %}
 	<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
         <span class="icon"><i class="{{icon}}"></i></span>
-		<span>{{name or dname}}</span>
-		{% if doc.type == "function" %}
+		<span class="is-family-code">{{name or dname}}
+		{%- if doc.type == "function" -%}
 			<span class="has-text-grey-light">()</span>
-		{% endif %}
+		{%- endif -%}
+		</span>
     </span>
 {% enddefaultmacro %}
 {% defaultmacro navlist(xs, label=None) -%}
@@ -308,10 +316,7 @@
 						{% call(x) navlist([parentmodule], label="Parent Module") %}
 							<li>
 								<a href="../{{ x.split(".")[-1] }}.html" class="p-1">
-									<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
-										<span class="icon"><i class="fa-solid fa-cubes"></i></span>
-										<span>{{x}}</span>
-									</span>
+									{{ symbol_icontext({'name': x, 'type': 'module'}) }}
 								</a>
 							</li>
 						{% endcall %}
@@ -319,10 +324,7 @@
 						{% call(x) navlist([parentmodule], label="Navigation") %}
 							<li>
 								<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
-									<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
-										<span class="icon"><i class="fa-solid fa-list-ul"></i></span>
-										<span>Index</span>
-									</span>
+									{{ symbol_icontext({'name': 'Index', 'type': 'index'}) }}
 								</a>
 							</li>
 						{% endcall %}
@@ -353,11 +355,6 @@
 		{% block module_info %}
 			<section class="section">
 				{{ breadcrumbs() }}
-				{% block edit_button %}
-					{% if True or edit_url %}
-						<button class="button" href="{{ edit_url }}">Edit on GitHub</button>
-					{% endif %}
-				{% endblock %}
 				{{ docstring(module) }}
 				{{ view_source(module) }}
 			</section>

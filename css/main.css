@@ -1,3 +1,5 @@
+@import url(https://cdnjs.cloudflare.com/ajax/libs/firacode/5.2.0/fira_code.min.css);
+@import url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css);
 /*! bulma.io v0.9.3 | MIT License | github.com/jgthms/bulma */
 /* Bulma Utilities */
 .button, .input, .textarea, .select select, .file-cta,
@@ -7921,3 +7923,7 @@ a.has-text-danger-dark:hover, a.has-text-danger-dark:focus {
     background-color: #f14668; }
   .divider.is-danger.is-light::after, .divider.is-danger.is-light::before {
     background-color: #feecf0; }
+
+.is-family-code {
+  font-family: "Fira Code", monospace !important;
+  font-size: 0.875rem !important; }

@@ -1,7 +1,15 @@
 @charset "utf-8";
 
+@import url(https://cdnjs.cloudflare.com/ajax/libs/firacode/5.2.0/fira_code.min.css);
+@import url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css);
+
 @import "bulma/sass/utilities/initial-variables";
 $family-monospace: 'Fira Code', monospace;
 
 @import "bulma/bulma";
 @import "./bulma-divider/src/sass/index.sass";
+
+.is-family-code {
+  font-family: $family-code !important;
+  font-size: 0.875rem !important;
+}
