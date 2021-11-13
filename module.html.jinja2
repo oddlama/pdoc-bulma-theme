@@ -146,24 +146,37 @@
         </details>
     {% endif %}
 {% enddefaultmacro %}
-{% defaultmacro module_name() %}
-    <h1 class="modulename">
-        {% set parts = module.modulename.split(".") %}
-        {% for part in parts %}
-            {%- set fullname = ".".join(parts[:loop.index]) -%}
-            {%- if fullname in all_modules and fullname != module.modulename -%}
-                <a href="./{{ "../" * loop.revindex0 }}{{ part }}.html">{{ part }}</a>
-            {%- else -%}
-                {{ part }}
-            {%- endif -%}
-            {%- if loop.nextitem -%}
-                <wbr>.
-            {%- endif -%}
-        {% endfor %}
-    </h1>
+{% defaultmacro breadcrumbs() %}
+	<nav class="breadcrumb" aria-label="breadcrumbs">
+		<ul>
+			{% set parts = module.modulename.split(".") %}
+			<li class="{{ 'is-active' if not parts }}">
+				<a href="{{ "../" * module.modulename.count(".") }}index.html">
+					<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
+						<span class="icon"><i class="fa-solid fa-list-ul"></i></span>
+						<span>Index</span>
+					</span>
+				</a>
+			</li>
+			{% for part in parts %}
+				{%- set fullname = ".".join(parts[:loop.index]) -%}
+				<li class="{{ 'is-active' if not loop.nextitem else '' }}">
+					{%- if fullname in all_modules and fullname != module.modulename -%}
+					{% set href = "./" + ("../" * loop.revindex0) + part + ".html" %}
+					{%- endif -%}
+					<a href="{{ href or "#" }}"{{ 'aria-current="page"' if not loop.nextitem else '' }}>
+						<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
+							<span class="icon"><i class="fa-solid fa-cubes"></i></span>
+							<span>{{part}}</span>
+						</span>
+					</a>
+				</li>
+			{% endfor %}
+		</ul>
+	</nav>
 {% enddefaultmacro %}
 {% defaultmacro icontext(icon, name, classes=None) -%}
-    <span class="icon-text is-flex-wrap-nowrap{{(" " + classes) if classes else "" }}">
+    <span class="icon-text is-flex-wrap-nowrap {{ classes or "" }}">
         <span class="icon"><i class="{{icon}}"></i></span>
 		<span>{{name}}</span>
     </span>
@@ -258,25 +271,9 @@
 {%- enddefaultmacro %}
 {% macro define_nav() -%}
 	{% block nav %}
+		{# TODO: the overflow should be hidden if the navbar is fullwidth . #}
 		<nav class="menu" style="position: sticky; vertical-align: top; max-height: 100vh; overflow-y: auto; top: 0; bottom: 0; padding: 30px;">
 			<div>
-				{% block nav_module_list_link %}
-					{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
-					{% if parentmodule and parentmodule in all_modules %}
-						<a class="pdoc-button module-list-button" href="../{{ parentmodule.split(".")[-1] }}.html">
-							{% include "box-arrow-in-left.svg" %}
-							&nbsp;
-							{{- parentmodule -}}
-						</a>
-					{% elif all_modules|length > 1 %}
-						<a class="pdoc-button module-list-button" href="{{ "../" * module.modulename.count(".") }}index.html">
-							{% include "box-arrow-in-left.svg" %}
-							&nbsp;
-							Module Index
-						</a>
-					{% endif %}
-				{% endblock %}
-
 				{% block nav_title %}
 					{% if logo %}
 						{% if logo_link %}<a href="{{ logo_link }}">{% endif %}
@@ -302,6 +299,33 @@
 					{% if index %}
 						<p class="menu-label">Contents</p>
 						{{ index | safe }}
+					{% endif %}
+				{% endblock %}
+
+				{% block nav_parent_module %}
+					{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
+					{% if parentmodule and parentmodule in all_modules %}
+						{% call(x) navlist([parentmodule], label="Parent Module") %}
+							<li>
+								<a href="../{{ x.split(".")[-1] }}.html" class="p-1">
+									<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
+										<span class="icon"><i class="fa-solid fa-cubes"></i></span>
+										<span>{{x}}</span>
+									</span>
+								</a>
+							</li>
+						{% endcall %}
+					{% elif all_modules|length > 1 %}
+						{% call(x) navlist([parentmodule], label="Navigation") %}
+							<li>
+								<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
+									<span class="icon-text is-flex-wrap-nowrap is-family-monospace">
+										<span class="icon"><i class="fa-solid fa-list-ul"></i></span>
+										<span>Index</span>
+									</span>
+								</a>
+							</li>
+						{% endcall %}
 					{% endif %}
 				{% endblock %}
 
@@ -332,51 +356,59 @@
 		</nav>
 	{% endblock %}
 {%- endmacro %}
+{% macro define_main_content() -%}
+	{% block main_content %}
+		{% block module_info %}
+			<section class="section">
+				{{ breadcrumbs() }}
+				{% block edit_button %}
+					{% if edit_url %}
+						<a class="pdoc-button git-button" href="{{ edit_url }}">Edit on GitHub</a>
+					{% endif %}
+				{% endblock %}
+				{{ docstring(module) }}
+				{{ view_source(module) }}
+			</section>
+		{% endblock %}
+		{% block module_contents %}
+			{% for m in module.flattened_own_members if is_public(m) | trim %}
+				<section class="section" id="{{ m.qualname or m.name }}">
+					{{ member(m) }}
+					{% if m.type == "class" %}
+						{% for m in m.own_members if m.type != "class" and is_public(m) | trim %}
+							<div id="{{ m.qualname }}" class="classattr">
+								{{ member(m) }}
+							</div>
+						{% endfor %}
+						{% set inherited_members = inherited(m) | trim %}
+						{% if inherited_members %}
+							<div class="inherited">
+								<h5>Inherited Members</h5>
+								<dl>
+									{{ inherited_members }}
+								</dl>
+							</div>
+						{% endif %}
+					{% endif %}
+				</section>
+			{% endfor %}
+		{% endblock %}
+	{% endblock %}
+{%- endmacro %}
 {% block head %}
     {% if math %}{% include "math.html.jinja2" %}{% endif %}
 {% endblock %}
 {% block body %}
-    <div class="columns is-fullheight">
-		<div class="column is-4">
+    <div class="columns is-multiline is-fullheight">
+		{# TODO: if long items are in the sidebar, this shit wraps around too early. I want a reasonable automatic size limit for the sidebar.#}
+		<div class="column">
 			{{ define_nav() }}
 		</div>
-		<main class="column">
-			{% block module_info %}
-				<section>
-					{% block edit_button %}
-						{% if edit_url %}
-							<a class="pdoc-button git-button" href="{{ edit_url }}">Edit on GitHub</a>
-						{% endif %}
-					{% endblock %}
-					{{ module_name() }}
-					{{ docstring(module) }}
-					{{ view_source(module) }}
-				</section>
-			{% endblock %}
-			{% block module_contents %}
-				{% for m in module.flattened_own_members if is_public(m) | trim %}
-					<section id="{{ m.qualname or m.name }}">
-						{{ member(m) }}
-						{% if m.type == "class" %}
-							{% for m in m.own_members if m.type != "class" and is_public(m) | trim %}
-								<div id="{{ m.qualname }}" class="classattr">
-									{{ member(m) }}
-								</div>
-							{% endfor %}
-							{% set inherited_members = inherited(m) | trim %}
-							{% if inherited_members %}
-								<div class="inherited">
-									<h5>Inherited Members</h5>
-									<dl>
-										{{ inherited_members }}
-									</dl>
-								</div>
-							{% endif %}
-						{% endif %}
-					</section>
-				{% endfor %}
-			{% endblock %}
-		</main>
+		<div class="column is-8">
+			<main>
+				{{ define_main_content() }}
+			</main>
+		</div>
 	</div>
     {% if mtime %}
         {% include "livereload.html.jinja2" %}
