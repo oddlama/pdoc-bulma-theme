@@ -170,7 +170,7 @@
 {% enddefaultmacro %}
 {% defaultmacro symbol_icontext(doc, name=None) -%}
 	{% if doc.type == "module" %}
-		{% set icon = "has-text- fa-solid fa-cubes" %}
+		{% set icon = "fa-solid fa-cubes" %}
 		{% set dname = doc.qualname or doc.name %}
 	{% elif doc.type == "variable" %}
 		{% set icon = "fa-solid fa-dice-d6" %}
@@ -256,86 +256,102 @@
         </li>
     {% endcall %}
 {%- enddefaultmacro %}
+{% macro define_nav() -%}
+	{% block nav %}
+		<nav class="menu" style="position: sticky; vertical-align: top; max-height: 100vh; overflow-y: auto; top: 0; bottom: 0; padding: 30px;">
+			<div>
+				{% block nav_module_list_link %}
+					{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
+					{% if parentmodule and parentmodule in all_modules %}
+						<a class="pdoc-button module-list-button" href="../{{ parentmodule.split(".")[-1] }}.html">
+							{% include "box-arrow-in-left.svg" %}
+							&nbsp;
+							{{- parentmodule -}}
+						</a>
+					{% elif all_modules|length > 1 %}
+						<a class="pdoc-button module-list-button" href="{{ "../" * module.modulename.count(".") }}index.html">
+							{% include "box-arrow-in-left.svg" %}
+							&nbsp;
+							Module Index
+						</a>
+					{% endif %}
+				{% endblock %}
+
+				{% block nav_title %}
+					{% if logo %}
+						{% if logo_link %}<a href="{{ logo_link }}">{% endif %}
+						<img src="{{ logo }}" class="logo" alt="project logo"/>
+						{% if logo_link %}</a>{% endif %}
+					{% endif %}
+				{% endblock %}
+
+				{% block nav_search_box %}
+					{% if search and all_modules|length > 1 %}
+						<p class="control has-icons-right">
+							<input class="input" type="search" placeholder="Search..." required>
+							<span class="icon is-small is-right">
+								<i class="fa-solid fa-magnifying-glass"></i>
+							</span>
+						</p>
+					{% endif %}
+				{% endblock %}
+
+				{% block nav_module_contents %}
+					{# TODO: Test this #}
+					{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
+					{% if index %}
+						<p class="menu-label">Contents</p>
+						{{ index | safe }}
+					{% endif %}
+				{% endblock %}
+
+				{% block nav_submodules %}
+					{% call(m) navlist(module.submodules, label="Submodules") %}
+						{# TODO: This is really awful. But we require a better link() function to solve it. #}
+						{# TODO: Maybe only use normal name not qualname? #}
+						{% set lnk = m.taken_from | link %}
+						{% set a_tag, rest = lnk.split('">') %}
+						{% set _, href = a_tag.split('href="') %}
+						{% set name, _ = rest.split('</a>') %}
+						<li class="{{ hide_private(m) }}"><a href="{{ href }}" class="p-1">{{ symbol_icontext(m, name=name) }}</a></li>
+					{% endcall %}
+				{% endblock %}
+
+				{% block nav_member_list %}
+					{{ member_navlist(module.members.values()) }}
+				{% endblock %}
+
+				{% block nav_footer %}
+					{% if footer_text %}
+					<footer>{{ footer_text }}</footer>
+					{% endif %}
+				{% endblock %}
+
+				{# TODO: make icon grey and text more subtle. add a switch whether the version should be included. #}
+				{% block attribution %}
+					<div class="section has-text-centered">
+						<a title="pdoc: Python API documentation generator" href="https://pdoc.dev">
+							<span class="icon-text">
+								built with <span class="is-hidden">pdoc</span>
+								<span class="icon has-text-grey-light">
+									<img alt="pdoc logo" src="data:image/svg+xml, {%- filter urlencode %}{% include "pdoc-logo.svg" %}{% endfilter %}"/>
+								</span>
+							</span>
+						</a>
+					</div>
+				{% endblock %}
+			</div>
+		</nav>
+	{% endblock %}
+{%- endmacro %}
 {% block head %}
     {% if math %}{% include "math.html.jinja2" %}{% endif %}
 {% endblock %}
 {% block body %}
     <div class="columns is-fullheight">
-		{% block nav %}
-			<div class="column is-4">
-				<nav class="menu" style="position: sticky; vertical-align: top; max-height: 100vh; overflow-y: auto; top: 0; bottom: 0; padding: 30px;">
-					<div>
-						{% block module_list_link %}
-							{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
-							{% if parentmodule and parentmodule in all_modules %}
-								<a class="pdoc-button module-list-button" href="../{{ parentmodule.split(".")[-1] }}.html">
-									{% include "box-arrow-in-left.svg" %}
-									&nbsp;
-									{{- parentmodule -}}
-								</a>
-							{% elif all_modules|length > 1 %}
-								<a class="pdoc-button module-list-button" href="{{ "../" * module.modulename.count(".") }}index.html">
-									{% include "box-arrow-in-left.svg" %}
-									&nbsp;
-									Module Index
-								</a>
-							{% endif %}
-						{% endblock %}
-
-						{% block nav_title %}
-							{% if logo %}
-								{% if logo_link %}<a href="{{ logo_link }}">{% endif %}
-								<img src="{{ logo }}" class="logo" alt="project logo"/>
-								{% if logo_link %}</a>{% endif %}
-							{% endif %}
-						{% endblock %}
-
-						{% block search_box %}
-							{% if search and all_modules|length > 1 %}
-								{# we set a pattern here so that we can use the :valid CSS selector #}
-								<input type="search" placeholder="Search..." role="searchbox" aria-label="search"
-									pattern=".+" required>
-							{% endif %}
-						{% endblock %}
-
-						{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
-						{% if index %}
-                            <p class="menu-label">Contents</p>
-							{{ index | safe }}
-						{% endif %}
-
-                        {% call(m) navlist(module.submodules, label="Submodules") %}
-							{# TODO: This is really awful. But we require a better link() function to solve it. #}
-							{# TODO: Maybe only use normal name not qualname? #}
-                            {% set lnk = m.taken_from | link %}
-                            {% set a_tag, rest = lnk.split('">') %}
-                            {% set _, href = a_tag.split('href="') %}
-                            {% set name, _ = rest.split('</a>') %}
-							<li class="{{ hide_private(m) }}"><a href="{{ href }}" class="p-1">{{ symbol_icontext(m, name=name) }}</a></li>
-                        {% endcall %}
-
-                        {{ member_navlist(module.members.values()) }}
-
-						{% block nav_footer %}
-							{% if footer_text %}
-							<footer>{{ footer_text }}</footer>
-							{% endif %}
-						{% endblock %}
-
-						{% block attribution %}
-							<a title="pdoc: Python API documentation generator" href="https://pdoc.dev">
-								<span class="icon-text">
-									built with <span class="is-hidden">pdoc</span>
-									<span class="icon">
-										<img alt="pdoc logo" src="data:image/svg+xml, {%- filter urlencode %}{% include "pdoc-logo.svg" %}{% endfilter %}"/>
-									</span>
-								</span>
-							</a>
-						{% endblock %}
-					</div>
-				</nav>
-			</div>
-		{% endblock %}
+		<div class="column is-4">
+			{{ define_nav() }}
+		</div>
 		<main class="column">
 			{% block module_info %}
 				<section>

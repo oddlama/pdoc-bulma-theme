@@ -1,29 +1,18 @@
 {% extends "module.html.jinja2" %}
 {% block title %}Module List &ndash; pdoc {{ __version__ }}{% endblock %}
-{% block nav %}
-    <nav class="pdoc">
-        <label id="navtoggle" for="togglestate" class="pdoc-button">{% include 'navtoggle.svg' %}</label>
-        <input id="togglestate" type="checkbox">
-        <div>
-            <h2>Available Modules</h2>
-            <ul>
-                {% for submodule in all_modules %}
-                    <li><a href="{{ submodule.replace(".","/") }}.html">{{ submodule }}</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-    </nav>
-    <header class="pdoc">
-        {% block logo %}
-            <a href="https://pdoc.dev">
-                <img src="data:image/svg+xml,{% filter urlencode %}{% include "pdoc-logo.svg" %}{% endfilter %}"
-                     alt="pdoc logo"/>
-            </a>
-        {% endblock %}
-        {% if search %}
-        <input type="search" placeholder="Search API Documentation..." aria-label="search box">
-        {% endif %}
-    </header>
+{% block nav_submodules %}
+	{% call(m) navlist(all_modules, label="Available Modules") %}
+		<li><a href="{{ m.replace(".","/") }}.html" class="p-1">
+			<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
+				<span class="icon"><i class="fa-solid fa-cubes"></i></span>
+				<span>{{m}}</span>
+			</span>
+		</a></li>
+	{% endcall %}
 {% endblock %}
+{% block body %}{{ define_nav() }}{% endblock %}
+{% block nav_module_list_link %}{% endblock %}
+{% block nav_module_contents %}{% endblock %}
+{% block nav_member_list %}{% endblock %}
 {% block module_info %}{% endblock %}
 {% block module_contents %}{% endblock %}
