@@ -84,7 +84,7 @@
 {% enddefaultmacro %}
 {% defaultmacro docstring(var) %}
     {% if var.docstring %}
-        <div class="docstring">{{ var.docstring | to_markdown | to_html | linkify(namespace=var.qualname) }}</div>
+        <div class="block">{{ var.docstring | to_markdown | to_html | linkify(namespace=var.qualname) }}</div>
     {% endif %}
 {% enddefaultmacro %}
 {% defaultmacro is_public(doc) %}
@@ -140,9 +140,12 @@
 {# fmt: on #}
 {% defaultmacro view_source(doc) %}
     {% if show_source and doc.source %}
-        <details>
-            <summary>View Source</summary>
-            {{ doc.source | highlight }}
+        <details class="container">
+			{# TODO: fucking webdev. make summary go right without the whole width becoming the button. FFS. float right doesnt work either as the fucking content gets fucking stripped for it then. fuck #}
+			<summary class="is-inline-block" style="list-style: none">
+				<span class="button is-white is-uppercase has-text-grey is-size-7 has-text-weight-semibold">Expand Source</span>
+			</summary>
+			{{ doc.source | highlight }}
         </details>
     {% endif %}
 {% enddefaultmacro %}
@@ -205,7 +208,7 @@
 		{% endif %}
 	{% elif doc.type == "class" %}
 		{% set icon = "fa-solid fa-diagram-project" %}
-		{% set dname = doc.name %}
+		{% set dname = doc.qualname %}
 	{% else %}
 		{% set icon = "fa-solid fa-circle-question" %}
 		{% set dname = doc.name %}
@@ -257,25 +260,33 @@
 {% defaultmacro hide_private(doc) -%}
 	{{ 'pdoc-is-private' if is_private(doc) else '' }}
 {%- enddefaultmacro %}
-{% defaultmacro member_navlist(xs, parent=None, nestlevel=0) -%}
-    {% call(m) member_navlist_filter(xs, type="module", sort="name", label="Modules", parent=parent, nestlevel=nestlevel) %}
-        <li class="{{ hide_private(m) }}"><a href="#{{ m.name }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
-    {% endcall %}
+{% defaultmacro member_navlist(xs, parent=None, nestlevel=0, except=[]) -%}
+	{% if 'module' not in except %}
+		{% call(m) member_navlist_filter(xs, type="module", sort="name", label="Modules", parent=parent, nestlevel=nestlevel) %}
+			<li class="{{ hide_private(m) }}"><a href="#{{ m.name }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+		{% endcall %}
+	{% endif %}
 
-    {% call(m) member_navlist_filter(xs, type="variable", label="Variables", parent=parent, nestlevel=nestlevel) %}
-        <li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
-    {% endcall %}
+	{% if 'variable' not in except %}
+		{% call(m) member_navlist_filter(xs, type="variable", label="Variables", parent=parent, nestlevel=nestlevel) %}
+			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+		{% endcall %}
+	{% endif %}
 
-    {% call(m) member_navlist_filter(xs, type="function", sort="name", label="Functions", parent=parent, nestlevel=nestlevel) %}
-        <li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
-    {% endcall %}
+	{% if 'function' not in except %}
+		{% call(m) member_navlist_filter(xs, type="function", sort="name", label="Functions", parent=parent, nestlevel=nestlevel) %}
+			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+		{% endcall %}
+	{% endif %}
 
-    {% call(m) member_navlist_filter(xs, type="class", sort="name", label="Classes", parent=parent, nestlevel=nestlevel) %}
-		<li class="mt-3 {{ hide_private(m) }}">
-			<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
-            {{ member_navlist(m.own_members, parent=m, nestlevel=nestlevel+1) }}
-        </li>
-    {% endcall %}
+	{% if 'class' not in except %}
+		{% call(m) member_navlist_filter(xs, type="class", sort="name", label="Classes", parent=parent, nestlevel=nestlevel) %}
+			<li class="mt-3 {{ hide_private(m) }}">
+				<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
+				{{ member_navlist(m.own_members, parent=m, nestlevel=nestlevel+1, except=['class']) }}
+			</li>
+		{% endcall %}
+	{% endif %}
 {%- enddefaultmacro %}
 {% macro define_nav() -%}
 	{% block nav %}
@@ -344,7 +355,7 @@
 				{% endblock %}
 
 				{% block nav_member_list %}
-					{{ member_navlist(module.members.values()) }}
+					{{ member_navlist(module.flattened_own_members) }}
 				{% endblock %}
 			</div>
 		</nav>
