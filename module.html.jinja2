@@ -34,14 +34,6 @@
 {% defaultmacro headerlink(doc) -%}
     <a class="headerlink" href="#{{ doc.qualname }}">#&nbsp;&nbsp</a>
 {% enddefaultmacro %}
-{% defaultmacro icontext(icon, name, textclass="", li=False) -%}
-    {% if li %}<li>{% endif %}
-    <span class="icon-text">
-        <span class="icon"><i class="{{icon}}"></i></span>
-        <span class="{{textclass}}">{{name}}</span>
-    </span>
-    {% if li %}</li>{% endif %}
-{% enddefaultmacro %}
 {% defaultmacro function(fn) -%}
     <div class="attr function">{{ headerlink(fn) }}
         {{ decorators(fn) }}
@@ -94,44 +86,68 @@
         <div class="docstring">{{ var.docstring | to_markdown | to_html | linkify(namespace=var.qualname) }}</div>
     {% endif %}
 {% enddefaultmacro %}
-{% defaultmacro nav_members(members) %}
-    <ul class="memberlist">
-        {% for m in members if is_public(m) | trim %}
-            <p>{{ m.type }} --- {{ m.name }}</p>
-            {% if m.type == "class" %}
-                {% if m.own_members %}
-                    {{ nav_members(m.own_members) | indent(12) }}
-                {% endif %}
-            {% endif %}
-        {% endfor %}
-        {#
-        {% for m in members if is_public(m) | trim %}
-            <li>
-                {% if m.type == "class" %}
-                    <a class="class" href="#{{ m.qualname }}">{{ m.qualname }}</a>
-                    {% if m.own_members %}
-                        {{ nav_members(m.own_members) | indent(12) }}
-                    {% endif %}
-                {% elif m.type == "module" %}
-                    <a class="module" href="#{{ m.name }}">{{ m.name }}</a>
-                {% elif m.name == "__init__" %}
-                    <a class="function" href="#{{ m.qualname }}">{{ m.qualname.split(".")[-2] }}</a>
-                {% else %}
-                    <a class="{{ m.type }}" href="#{{ m.qualname }}">{{ m.name }}</a>
-                {% endif %}
-            </li>
-        {% endfor %}
-        #}
-    </ul>
+{% defaultmacro icontext(icon, name, classes=None) -%}
+    <span class="icon-text is-flex-wrap-nowrap{{(" " + classes) if classes else "" }}">
+        <span class="icon"><i class="{{icon}}"></i></span>
+		<span>{{name}}</span>
+    </span>
 {% enddefaultmacro %}
+{% defaultmacro symbol_icontext(doc) -%}
+	{% if doc.type == "module" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.qualname %}
+	{% elif doc.type == "variable" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.name %}
+	{% elif doc.type == "function" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.name %}
+	{% elif doc.type == "class" %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.name %}
+	{% else %}
+		{% set icon = "fa-solid fa-cube" %}
+		{% set name = doc.name %}
+	{% endif %}
+	{% set classes = ["is-family-monospace"] %}
+	{% if is_private(doc) %}
+		{% set _ = classes.append("has-text-grey-light") %}
+	{% endif %}
+	<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
+        <span class="icon"><i class="{{icon}}"></i></span>
+		<span>{{name}}</span>
+    </span>
+{% enddefaultmacro %}
+{# TODO: delete comment
+{% for m in members if is_public(m) | trim %}
+    <li>
+        {% if m.type == "class" %}
+            <a class="class" href="#{{ m.qualname }}">{{ m.qualname }}</a>
+            {% if m.own_members %}
+                {{ nav_members(m.own_members) | indent(12) }}
+            {% endif %}
+        {% elif m.type == "module" %}
+            <a class="module" href="#{{ m.name }}">{{ m.name }}</a>
+        {% elif m.name == "__init__" %}
+            <a class="function" href="#{{ m.qualname }}">{{ m.qualname.split(".")[-2] }}</a>
+        {% else %}
+            <a class="{{ m.type }}" href="#{{ m.qualname }}">{{ m.name }}</a>
+        {% endif %}
+    </li>
+{% endfor %}
+#}
 {% defaultmacro is_public(doc) %}
+	{# This macro has an unfortunate naming, and the name is hard-coded into
+	some internal logic. Our intention is to have is_public return true
+	for all symbols that should be documented. is_private then used to determine
+	whether the symbol is part of the public API or the internal one. #}
     {#
     This macro is a bit unconventional in that its output is not rendered, but treated as a boolean:
     Returning no text is interpreted as false, returning any other text is iterpreted as true.
     Implementing this as a macro makes it very easy to override with a custom template..
     #}
-    {% if not doc.name.startswith("_") %}
-        {# members not starting with an underscore are considered public by default #}
+    {% if not doc.name.startswith("__") %}
+        {# members not starting with two underscores are considered public by default #}
         true
     {% elif doc.name == "__init__" %}
         {# the constructor is our special case which we also treat as public #}
@@ -140,7 +156,14 @@
         {# Sometimes we have __doc__ in __all__, which we want to exclude for pdoc's purposes. #}
         {# https://github.com/mitmproxy/pdoc/issues/235 #}
     {% elif doc.qualname is in(module.obj.__all__ or []) %}
-        {# members starting with an underscore are still public if mentioned in __all__ #}
+        {# members are still public if mentioned in __all__ #}
+        true
+    {% endif %}
+{% enddefaultmacro %}
+{% defaultmacro is_private(doc) %}
+	{# members starting with an underscore are private, except for __init__ #}
+    {% if doc.name == "__init__" %}
+    {% elif doc.name.startswith("_") %}
         true
     {% endif %}
 {% enddefaultmacro %}
@@ -188,14 +211,63 @@
         {% endfor %}
     </h1>
 {% enddefaultmacro %}
+{% defaultmacro navlist(xs, label=None) -%}
+    {% if xs %}
+        {% if label %}
+        <p class="menu-label">{{ label }}</p>
+        {% endif %}
+        <ul class="menu-list">
+            {% for m in xs %}
+                {{ caller(m) }}
+            {% endfor %}
+        </ul>
+    {% endif %}
+{%- enddefaultmacro %}
+{% defaultmacro member_navlist_filter(members, type, label=None) -%}
+	{% set xs = [] %}
+	{% for x in members if x.type == type and is_public(x) %}
+		{% set _ = xs.append(x) %}
+	{% endfor %}
+    {% if xs %}
+        {% if label %}
+        <p class="menu-label">{{ label }}</p>
+        {% endif %}
+        <ul class="menu-list">
+            {% for x in xs | sort(attribute='name') %}
+                {{ caller(x) }}
+            {% endfor %}
+        </ul>
+    {% endif %}
+{%- enddefaultmacro %}
+{% defaultmacro member_navlist(xs) -%}
+    {% call(m) member_navlist_filter(xs, type="module", label="Modules") %}
+        <li><a href="#{{ m.name }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+    {% endcall %}
+
+{# TODO: _ -> Private variables section #}
+    {% call(m) member_navlist_filter(xs, type="variable", label="Variables") %}
+        <li><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+    {% endcall %}
+
+    {% call(m) member_navlist_filter(xs, type="function", label="Functions") %}
+        <li><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+    {% endcall %}
+
+    {% call(m) member_navlist_filter(xs, type="class", label="Classes") %}
+		<li>
+			<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
+            {{ member_navlist(m.own_members) }}
+        </li>
+    {% endcall %}
+{%- enddefaultmacro %}
 {% block head %}
     {% if math %}{% include "math.html.jinja2" %}{% endif %}
 {% endblock %}
 {% block body %}
     <div class="columns is-fullheight">
 		{% block nav %}
-			<div class="column is-3">
-				<nav id="sidebar" class="menu" style="position: sticky; vertical-align: top; max-height: 100vh; overflow-y: auto; top: 0; bottom: 0; padding: 30px;">
+			<div class="column is-4">
+				<nav class="menu" style="position: sticky; vertical-align: top; max-height: 100vh; overflow-y: auto; top: 0; bottom: 0; padding: 30px;">
 					<div>
 						{% block module_list_link %}
 							{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
@@ -236,23 +308,14 @@
 							{{ index | safe }}
 						{% endif %}
 
-                        {% if module.submodules %}
-                            <p class="menu-label">Submodules</p>
-                            <ul class="menu-list">
-								{% for submodule in module.submodules %}
-									{{ submodule.taken_from | link(text=icontext(
-                                        icon='fa-solid fa-cube',
-                                        name=submodule.name,
-                                        textclass="is-family-monospace",
-                                        li=True)) }}
-								{% endfor %}
-							</ul>
-						{% endif %}
+                        {% call(m) navlist(module.submodules, label="Submodules") %}
+                            <li>{{ m.taken_from | link(text=symbol_icontext(
+                                icon='fa-solid fa-cube',
+                                name=m.name)) }}
+                            </li>
+                        {% endcall %}
 
-						{% if module.members %}
-                            <p class="menu-label">API Documentation</p>
-							{{ nav_members(module.members.values()) }}
-						{% endif %}
+                        {{ member_navlist(module.members.values()) }}
 
 						{% block nav_footer %}
 							{% if footer_text %}
