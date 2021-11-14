@@ -3,10 +3,7 @@
 {% block nav_submodules %}
 	{% call(m) navlist(all_modules, label="Available Modules") %}
 		<li><a href="{{ m.replace(".","/") }}.html" class="p-1">
-			<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
-				<span class="icon"><i class="fa-solid fa-cubes"></i></span>
-				<span>{{m}}</span>
-			</span>
+			{{ symbol_icontext({'qualname': m, 'name': m, 'type': 'module'}) }}
 		</a></li>
 	{% endcall %}
 {% endblock %}
