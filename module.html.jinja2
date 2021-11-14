@@ -5,7 +5,30 @@
 	{{ super() | safe }}
     {% filter minify_css %}
         <style>{% include 'syntax-highlighting.css' %}</style>
-        <style>.pdoc-is-private {display: none; }</style>
+		<style>
+		{# TODO: this is shit do it in scss #}
+		.pdoc-is-private {display: none; }
+		pre.definition {
+			font-size: 0.85rem !important;
+		}
+  .button.is-white-transparent {
+    background-color: transparent;
+    border-color: transparent;
+    color: #0a0a0a; }
+    .button.is-white-transparent:hover, .button.is-white-transparent.is-hovered {
+      background-color: #f9f9f9;
+      border-color: transparent;
+      color: #0a0a0a; }
+    .button.is-white-transparent:focus, .button.is-white-transparent.is-focused {
+      border-color: transparent;
+      color: #0a0a0a; }
+      .button.is-white-transparent:focus:not(:active), .button.is-white-transparent.is-focused:not(:active) {
+        box-shadow: 0 0 0 0.125em rgba(255, 255, 255, 0.25); }
+    .button.is-white-transparent:active, .button.is-white-transparent.is-active {
+      background-color: #f2f2f2;
+      border-color: transparent;
+      color: #0a0a0a; }
+		</style>
     {% endfilter %}
 {% endblock %}
 {% defaultmacro bases(cls) %}
@@ -38,7 +61,7 @@
 {% enddefaultmacro %}
 {% defaultmacro function(fn) -%}
 	{# TODO: <div class="attr function">{{ headerlink(fn) }} #}
-	<pre class="p-3">
+	<pre class="p-2 definition">
 		{{- decorators(fn) -}}
 		{%- if fn.name == "__init__" -%}
 			{#- no space -#}
@@ -60,7 +83,9 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro variable(var) %}
-	<pre class="p-3">
+	<pre class="p-2 definition">
+		{#- no space -#}
+		<span class="icon is-small mr-1"><span class="{{ symbol_icon(var) }}"></span></span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-danger">{{ var.name }}</span>
 		{#- no space -#}
@@ -71,9 +96,9 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro submodule(mod) %}
-	<pre class="p-3">
+	<pre class="p-2 definition">
 		{#- no space -#}
-		<span class="icon mr-1"><span class="{{ symbol_icon({'type': 'module', 'qualname': mod.taken_from[0] }) }}"></span></span>
+		<span class="icon is-small mr-1"><span class="{{ symbol_icon({'type': 'module', 'qualname': mod.taken_from[0] }) }}"></span></span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-black">{{ mod.taken_from | link }}</span>
 		{#- no space -#}
@@ -81,7 +106,7 @@
 {% enddefaultmacro %}
 {% defaultmacro class(cls) %}
 	{# TODO: {{ headerlink(cls) }}#}
-	<pre class="p-3">
+	<pre class="p-2 definition">
 		{#- no space -#}
 		{{- decorators(cls) -}}
 		{#- no space -#}
@@ -91,7 +116,8 @@
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-danger">{{ cls.qualname }}</span>
 		{#- no space -#}
-		{{- bases(cls) -}}
+		<span class="has-text-weight-bold">{{- bases(cls) -}}</span>
+		{#- no space -#}
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro member(doc, last, parent=None) %}
@@ -119,7 +145,7 @@
 	{% endif %}
 	<dd class="{{ hide_private(doc) }} mb-4">
 		{% if (doc.type != "class" or xs|length > 0) and docstr %}
-			<div class="pl-6 pr-0 py-5">
+			<div class="pl-6 py-5" style="padding-right: 10rem;">
 				{{ docstr }}
 				{% if doc.type == "class" %}
 					{% for x in xs %}
@@ -198,8 +224,8 @@
     {% if show_source and doc.source %}
         <details>
 			{# TODO: fucking webdev. make summary go right without the whole width becoming the button. FFS. float right doesnt work either as the fucking content gets fucking stripped for it then. fuck #}
-			<summary class="is-inline-block" style="list-style: none">
-				<span class="button is-white is-uppercase has-text-grey is-size-7 has-text-weight-semibold">Expand Source</span>
+			<summary class="is-inline mr-6" style="position: absolute; right: 0; z-index: 1; list-style: none">
+				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative; top: -2.2rem;">Expand Source</span>
 			</summary>
 			{{ doc.source | highlight }}
         </details>
@@ -313,10 +339,17 @@
 {% enddefaultmacro %}
 {% defaultmacro navlist(xs, label=None) -%}
     {% if xs %}
+		{#- Check if all members are private. In that case we hide the whole list. -#}
+		{% set public_members = [] %}
+		{% for x in xs if not is_private({'name': x}) %}
+			{% set _ = public_members.append(x) %}
+		{% endfor %}
+		{% set hide = 'pdoc-is-private' if public_members|length == 0 else '' %}
+
         {% if label %}
-		<div class="divider mb-3 is-left">{{ label }}</div>
+			<div class="{{ hide }} divider mb-3 is-left">{{ label }}</div>
         {% endif %}
-        <ul class="menu-list p-0 m-0">
+        <ul class="{{ hide }} menu-list p-0 m-0">
             {% for m in xs %}
                 {{ caller(m) }}
             {% endfor %}
@@ -331,11 +364,19 @@
     {% if sort %}
 		{% set xs = xs | sort(attribute=sort) %}
 	{% endif %}
+
+	{#- Check if all members are private. In that case we hide the whole list. -#}
+	{% set public_members = [] %}
+	{% for x in xs if not is_private(x) %}
+		{% set _ = public_members.append(x) %}
+	{% endfor %}
+	{% set hide = 'pdoc-is-private' if public_members|length == 0 else '' %}
+
     {% if xs %}
         {% if label and nestlevel == 0 %}
-			<div class="divider mb-3 is-left">{{ label }}</div>
+			<div class="{{ hide }} divider mb-3 is-left">{{ label }}</div>
         {% endif %}
-        <ul class="menu-list p-0 m-0 {{ "ml-5" if nestlevel > 0 else "" }}" style="border: 0">
+        <ul class="{{ hide }} menu-list p-0 m-0 {{ "ml-5" if nestlevel > 0 else "" }}" style="border: 0">
             {% for x in xs %}
                 {{ caller(x) }}
             {% endfor %}
@@ -385,6 +426,13 @@
 		{% set xs = xs | sort(attribute=sort) %}
 	{% endif %}
 
+	{#- Check if all members are private. In that case we hide the whole list. -#}
+	{% set public_members = [] %}
+	{% for x in xs if not is_private(x) %}
+		{% set _ = public_members.append(x) %}
+	{% endfor %}
+	{% set hide = 'pdoc-is-private' if public_members|length == 0 else '' %}
+
 	{% set icon = symbol_icon({'type': type}) %}
 	{% if type == "module" %}
 		{% set section_name = "Submodules" %}
@@ -404,8 +452,8 @@
 	{% endif %}
 
     {% if xs %}
-		<hr class="mx-6">
-		<section class="section" id="{{ section_id }}">
+		<hr class="{{ hide }} mx-6">
+		<section class="{{ hide }} section" id="{{ section_id }}">
 			{# TODO: headerlink #}
 			<div class="content">
 				<h3>
