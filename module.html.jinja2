@@ -63,6 +63,8 @@
 	{# TODO: <div class="attr function">{{ headerlink(fn) }} #}
 	<pre class="p-2 definition">
 		{{- decorators(fn) -}}
+		{#- no space -#}
+		<span class="icon is-small mr-1"><span class="{{ symbol_icon(fn) }} has-text-grey-light"></span></span>
 		{%- if fn.name == "__init__" -%}
 			{#- no space -#}
 			<span class="name">{{ ".".join(fn.qualname.split(".")[:-1]) }}</span>
@@ -121,7 +123,22 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro member(doc, last, parent=None) %}
-	<dt class="{{ hide_private(doc) }} {{ '' if parent else 'mt-6' }}" id="{{ doc.qualname or doc.name }}">
+	{% set dt_classes = "mt-6" %}
+	{% set dd_classes = "mb-4" %}
+	{% set body_classes = "pl-6 py-5" %}
+
+	{% if parent or doc.type == "module" %}
+		{% set dt_classes = "" %}
+	{% endif %}
+	{% if doc.type == "module" %}
+		{% set dd_classes = "" %}
+		{% set body_classes = "pl-6 pb-5 pt-3" %}
+	{% endif %}
+	{% if doc.type == "class" %}
+		{% set dt_classes = "mt-6" %}
+	{% endif %}
+
+	<dt class="{{ hide_private(doc) }} {{ dt_classes }}" id="{{ doc.qualname or doc.name }}">
 		{% if doc.type == "class" %}
 			{{ class(doc) }}
 		{% elif doc.type == "function" %}
@@ -131,10 +148,6 @@
 		{% else %}
 			{{ variable(doc) }}
 		{% endif %}
-
-		{% if doc.type != "variable" %}
-			{{ view_source(doc) }}
-		{% endif %}
 	</dt>
 	{% set docstr = docstring(doc) %}
 	{% set xs = [] %}
@@ -143,16 +156,12 @@
 			{% set _ = xs.append(x) %}
 		{% endfor %}
 	{% endif %}
-	<dd class="{{ hide_private(doc) }} mb-4">
-		{% if (doc.type != "class" or xs|length > 0) and docstr %}
-			<div class="pl-6 py-5" style="padding-right: 10rem;">
+	<dd class="{{ hide_private(doc) }} {{ dd_classes }}">
+		{% if (doc.type != "class" and docstr) or xs|length > 0 %}
+			<div class="{{ body_classes }}">
 				{{ docstr }}
 				{% if doc.type == "class" %}
-					{% for x in xs %}
-						<dl>
-							{{ member(x, loop.last, parent=doc) }}
-						</dl>
-					{% endfor %}
+					{{ module_content(xs, parent=doc) }}
 					{% set inherited_members = inherited(doc) | trim %}
 					{% if inherited_members %}
 						<div>
@@ -163,6 +172,10 @@
 				{% endif %}
 			</div>
 			{% if not parent and doc.type in ["class", "function"] and not last %}<hr>{% endif %}
+		{% endif %}
+
+		{% if doc.type not in ["variable", "module"] %}
+			{{ view_source(doc) }}
 		{% endif %}
 	</dd>
 {% enddefaultmacro %}
@@ -223,9 +236,16 @@
 {% defaultmacro view_source(doc) %}
     {% if show_source and doc.source %}
         <details>
-			{# TODO: fucking webdev. make summary go right without the whole width becoming the button. FFS. float right doesnt work either as the fucking content gets fucking stripped for it then. fuck #}
+			{#- TODO: fucking webdev. make summary go right without the whole width becoming the button. FFS. float right doesnt work either as the fucking content gets fucking stripped for it then. fuck. workaround is to use float and absolute position but then other content can overlay into it. meeeeeeh -#}
+			{#- TODO: dont -2.2 here. nononono -#}
+			{#- TODO: some docstrings are indented. no good. -#}
+			{#-
 			<summary class="is-inline mr-6" style="position: absolute; right: 0; z-index: 1; list-style: none">
-				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative; top: -2.2rem;">Expand Source</span>
+				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative">Expand Source</span>
+			</summary>
+			-#}
+			<summary class="is-flex is-justify-content-flex-end">
+				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative">Expand Source</span>
 			</summary>
 			{{ doc.source | highlight }}
         </details>
@@ -337,11 +357,14 @@
 		</span>
     </span>
 {% enddefaultmacro %}
+{% defaultmacro divider_button(label, href) -%}
+	<a href="{{ href }}" class="button p-0 m-0 is-white is-size-7 has-text-grey" style="height: auto">{{ label }}</a>
+{% enddefaultmacro %}
 {% defaultmacro navlist(xs, label=None) -%}
     {% if xs %}
 		{#- Check if all members are private. In that case we hide the whole list. -#}
 		{% set public_members = [] %}
-		{% for x in xs if not is_private({'name': x}) %}
+		{% for x in xs if not is_private(x) %}
 			{% set _ = public_members.append(x) %}
 		{% endfor %}
 		{% set hide = 'pdoc-is-private' if public_members|length == 0 else '' %}
@@ -387,26 +410,20 @@
 	{{ 'pdoc-is-private' if is_private(doc) else '' }}
 {%- enddefaultmacro %}
 {% defaultmacro member_navlist(xs, parent=None, nestlevel=0, except=[]) -%}
-	{% if 'module' not in except %}
-		{% call(m) for_member_navlist_filter(xs, type="module", sort="name", label="Modules", parent=parent, nestlevel=nestlevel) %}
-			<li class="{{ hide_private(m) }}"><a href="#{{ m.name }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
-		{% endcall %}
-	{% endif %}
-
 	{% if 'variable' not in except %}
-		{% call(m) for_member_navlist_filter(xs, type="variable", label="Variables", parent=parent, nestlevel=nestlevel) %}
+		{% call(m) for_member_navlist_filter(xs, type="variable", label=divider_button("Variables", "#variables"), parent=parent, nestlevel=nestlevel) %}
 			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
 		{% endcall %}
 	{% endif %}
 
 	{% if 'function' not in except %}
-		{% call(m) for_member_navlist_filter(xs, type="function", sort="name", label="Functions", parent=parent, nestlevel=nestlevel) %}
+		{% call(m) for_member_navlist_filter(xs, type="function", sort="name", label=divider_button("Functions", "#functions"), parent=parent, nestlevel=nestlevel) %}
 			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
 		{% endcall %}
 	{% endif %}
 
 	{% if 'class' not in except %}
-		{% call(m) for_member_navlist_filter(xs, type="class", sort="name", label="Classes", parent=parent, nestlevel=nestlevel) %}
+		{% call(m) for_member_navlist_filter(xs, type="class", sort="name", label=divider_button("Classes", "#classes"), parent=parent, nestlevel=nestlevel) %}
 			<li class="mt-3 {{ hide_private(m) }}">
 				<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
 				{{ member_navlist(m.own_members, parent=m, nestlevel=nestlevel+1, except=['class']) }}
@@ -417,7 +434,7 @@
 		{% endcall %}
 	{% endif %}
 {%- enddefaultmacro %}
-{% defaultmacro for_member_content_filter(members, type, sort=None) -%}
+{% defaultmacro for_member_content_filter(members, type, sort=None, parent=parent) -%}
 	{% set xs = [] %}
 	{% for x in members if x.type == type and is_public(x) %}
 		{% set _ = xs.append(x) %}
@@ -452,47 +469,56 @@
 	{% endif %}
 
     {% if xs %}
-		<hr class="{{ hide }} mx-6">
-		<section class="{{ hide }} section" id="{{ section_id }}">
-			{# TODO: headerlink #}
-			<div class="content">
-				<h3>
-				<span class="icon-text is-flex-wrap-nowrap">
-					<span class="icon ml-1 mr-4"><i class="{{ icon }}"></i></span>
-					<span class="is-family-monospace">{{ section_name }}</span>
-				</span>
-				</h3>
-			</div>
-			<dl>
+		{% if not parent %}
+			<hr class="{{ hide }} mx-6">
+			<section class="{{ hide }} section" id="{{ section_id }}">
+				{# TODO: headerlink #}
+				<div class="content">
+					<h3>
+					<span class="icon-text is-flex-wrap-nowrap">
+						<span class="icon ml-1 mr-4"><i class="{{ icon }}"></i></span>
+						<span class="is-family-monospace">{{ section_name }}</span>
+					</span>
+					</h3>
+				</div>
+				<dl>
+					{% for x in xs %}
+						{{ caller(x, loop.last) }}
+					{% endfor %}
+				</dl>
+			</section>
+		{% else %}
+			<div class="divider is-left {{ hide }}">{{ section_id }}</div>
+			<dl class="{{ hide }}">
 				{% for x in xs %}
 					{{ caller(x, loop.last) }}
 				{% endfor %}
 			</dl>
-		</section>
+		{% endif %}
     {% endif %}
 {%- enddefaultmacro %}
-{% defaultmacro module_content(xs, except=[]) -%}
+{% defaultmacro module_content(xs, except=[], parent=None) -%}
 	{% if 'module' not in except %}
-		{% call(m, last) for_member_content_filter(xs, type="module", sort="name") %}
-			{{ member(m, last) }}
+		{% call(m, last) for_member_content_filter(xs, type="module", sort="name", parent=parent) %}
+			{{ member(m, last, parent=parent) }}
 		{% endcall %}
 	{% endif %}
 
 	{% if 'variable' not in except %}
-		{% call(m, last) for_member_content_filter(xs, type="variable") %}
-			{{ member(m, last) }}
+		{% call(m, last) for_member_content_filter(xs, type="variable", parent=parent) %}
+			{{ member(m, last, parent=parent) }}
 		{% endcall %}
 	{% endif %}
 
 	{% if 'function' not in except %}
-		{% call(m, last) for_member_content_filter(xs, type="function", sort="name") %}
-			{{ member(m, last) }}
+		{% call(m, last) for_member_content_filter(xs, type="function", sort="name", parent=parent) %}
+			{{ member(m, last, parent=parent) }}
 		{% endcall %}
 	{% endif %}
 
 	{% if 'class' not in except %}
-		{% call(m, last) for_member_content_filter(xs, type="class", sort="name") %}
-			{{ member(m, last) }}
+		{% call(m, last) for_member_content_filter(xs, type="class", sort="name", parent=parent) %}
+			{{ member(m, last, parent=parent) }}
 		{% endcall %}
 	{% endif %}
 {%- enddefaultmacro %}
@@ -531,16 +557,17 @@
 
 				{% block nav_parent_module %}
 					{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
+					{% set pm = {'type': 'module', 'qualname': parentmodule, 'name': parentmodule.split('.')[-1]} %}
 					{% if parentmodule and parentmodule in all_modules %}
-						{% call(x) navlist([parentmodule], label="Parent Module") %}
+						{% call(x) navlist([pm], label="Parent Module") %}
 							<li>
-								<a href="../{{ x.split(".")[-1] }}.html" class="p-1">
-									{{ symbol_icontext({'qualname': parentmodule, 'name': x, 'type': 'module'}) }}
+								<a href="../{{ x.qualname.split(".")[-1] }}.html" class="p-1">
+									{{ symbol_icontext(x) }}
 								</a>
 							</li>
 						{% endcall %}
 					{% elif all_modules|length > 1 %}
-						{% call(x) navlist([parentmodule], label="Navigation") %}
+						{% call(x) navlist([pm], label="Navigation") %}
 							<li>
 								<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
 									{{ symbol_icontext({'name': 'Index', 'type': 'index'}) }}
@@ -551,7 +578,7 @@
 				{% endblock %}
 
 				{% block nav_submodules %}
-					{% call(m) navlist(module.submodules, label="Submodules") %}
+					{% call(m) navlist(module.submodules, label=divider_button("Submodules", "#submodules")) %}
 						{# TODO: This is really awful. But we require a better link() function to solve it. #}
 						{# TODO: Maybe only use normal name not qualname? #}
 						{% set lnk = m.taken_from | link %}
