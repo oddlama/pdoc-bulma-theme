@@ -71,7 +71,13 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro submodule(mod) %}
-    <div class="attr module">{{ headerlink(mod) }}<span class="name">{{ mod.taken_from | link }}</span></div>
+	<pre class="p-3">
+		{#- no space -#}
+		<span class="icon mr-1"><span class="{{ symbol_icon({'type': 'module', 'qualname': mod.taken_from[0] }) }}"></span></span>
+		{#- no space -#}
+		<span class="has-text-weight-bold has-text-black">{{ mod.taken_from | link }}</span>
+		{#- no space -#}
+	</pre>
 {% enddefaultmacro %}
 {% defaultmacro class(cls) %}
 	{# TODO: {{ headerlink(cls) }}#}
@@ -104,30 +110,39 @@
 			{{ view_source(doc) }}
 		{% endif %}
 	</dt>
-	<dd class="{{ hide_private(doc) }}">
-		<div class="pl-6 pr-0 py-5">
-			{{ docstring(doc) }}
-			{% if doc.type == "class" %}
-				{% for x in doc.own_members if x.type != "class" and is_public(x) | trim %}
-					<dl>
-						{{ member(x, loop.last, parent=doc) }}
-					</dl>
-				{% endfor %}
-				{% set inherited_members = inherited(doc) | trim %}
-				{% if inherited_members %}
-					<div>
-						<h5>Inherited Members</h5>
-						{{ inherited_members }}
-					</div>
+	{% set docstr = docstring(doc) %}
+	{% set xs = [] %}
+	{% if doc.type == "class" %}
+		{% for x in doc.own_members if x.type != "class" and is_public(x) | trim %}
+			{% set _ = xs.append(x) %}
+		{% endfor %}
+	{% endif %}
+	<dd class="{{ hide_private(doc) }} mb-4">
+		{% if (doc.type != "class" or xs|length > 0) and docstr %}
+			<div class="pl-6 pr-0 py-5">
+				{{ docstr }}
+				{% if doc.type == "class" %}
+					{% for x in xs %}
+						<dl>
+							{{ member(x, loop.last, parent=doc) }}
+						</dl>
+					{% endfor %}
+					{% set inherited_members = inherited(doc) | trim %}
+					{% if inherited_members %}
+						<div>
+							<h5>Inherited Members</h5>
+							{{ inherited_members }}
+						</div>
+					{% endif %}
 				{% endif %}
-			{% endif %}
-		</div>
-		{% if not parent and doc.type in ["class", "function"] and not last %}<hr>{% endif %}
+			</div>
+			{% if not parent and doc.type in ["class", "function"] and not last %}<hr>{% endif %}
+		{% endif %}
 	</dd>
 {% enddefaultmacro %}
 {% defaultmacro docstring(var) %}
     {% if var.docstring %}
-        <div class="block">{{ var.docstring | to_markdown | to_html | linkify(namespace=var.qualname) }}</div>
+        <div class="block content">{{ var.docstring | to_markdown | to_html | linkify(namespace=var.qualname) }}</div>
     {% endif %}
 {% enddefaultmacro %}
 {% defaultmacro is_public(doc) %}
@@ -161,7 +176,6 @@
         true
     {% endif %}
 {% enddefaultmacro %}
-{# fmt: off #}
 {% defaultmacro inherited(cls) %}
     {% for base, members in cls.inherited_members.items() %}
         {% set m = None %}{# workaround for https://github.com/pallets/jinja/issues/1427 #}
@@ -180,7 +194,6 @@
         {% endif %}
     {% endfor %}
 {% enddefaultmacro %}
-{# fmt: on #}
 {% defaultmacro view_source(doc) %}
     {% if show_source and doc.source %}
         <details>
@@ -235,9 +248,10 @@
 	{%- if doc.type == "index" -%}
 		fa-solid fa-list-ul
 	{%- elif doc.type == "module" -%}
-		{%- if not doc.submodules and doc.qualname -%}
+		{%- if not doc.submodules and doc.qualname or doc.fullname -%}
+			{% set fn = doc.qualname or doc.fullname %}
 			{% set submodules = [] %}
-			{% for m in all_modules if m.startswith(doc.qualname + ".") %}
+			{% for m in all_modules if m.startswith(fn + ".") %}
 				{% set _ = submodules.append(m) %}
 			{% endfor  %}
 		{%- elif doc.submodules -%}
@@ -371,7 +385,6 @@
 		{% set xs = xs | sort(attribute=sort) %}
 	{% endif %}
 
-
 	{% set icon = symbol_icon({'type': type}) %}
 	{% if type == "module" %}
 		{% set section_name = "Submodules" %}
@@ -391,7 +404,7 @@
 	{% endif %}
 
     {% if xs %}
-		<hr>
+		<hr class="mx-6">
 		<section class="section" id="{{ section_id }}">
 			{# TODO: headerlink #}
 			<div class="content">
@@ -521,6 +534,10 @@
 					<h3>
 					<span class="icon-text is-flex-wrap-nowrap">
 						<span class="icon ml-1 mr-4"><i class="{{ symbol_icon(module) }}"></i></span>
+						{#-
+						{% set parts = module.fullname.split(".") %}
+						<span class="is-family-monospace">Module <span>{{ '.'.join(parts[:-1]) + ('.' if parts|length > 1 else '') }}</span><span class="has-text-danger">{{ parts[-1] }}</span></span>
+						-#}
 						<span class="is-family-monospace">Module <span class="has-text-danger">{{ module.name }}</span></span>
 					</span>
 					</h3>
