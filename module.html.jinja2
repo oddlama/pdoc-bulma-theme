@@ -119,6 +119,7 @@
 {% enddefaultmacro %}
 {% defaultmacro class(cls) %}
 	{# TODO: {{ headerlink(cls) }}#}
+	{# TODO: shorten links in pre #}
 	<pre class="p-2 definition">
 		{#- no space -#}
 		{{- decorators(cls) -}}
@@ -134,6 +135,56 @@
 		<span class="has-text-weight-bold">{{- bases(cls) -}}:</span>
 		{#- no space -#}
 	</pre>
+{% enddefaultmacro %}
+{% defaultmacro inherited_members(doc, last, parent=None) %}
+	{# Inherited members, list of tuples: [(base, [member, ...]), ...]. #}
+	{% set inherited = [] %}
+	{% for base, members in doc.inherited_members.items() %}
+		{% set xs = [] %}
+		{% for x in members if is_public(x) %}
+			{% set _ = xs.append(x) %}
+		{% endfor %}
+
+		{% if xs|length > 0 %}
+			{% set _ = inherited.append((base, xs)) %}
+		{% endif %}
+	{% endfor %}
+
+	{% if inherited|length > 0 %}
+		<div class="divider is-left">Inherited Members</div>
+		<table class="table">
+		{% for base, members in inherited %}
+			<tbody>
+				<tr>
+					<td class="has-text-weight-bold">
+						{# TODO: This is really awful. But we require a better link() function to solve it. #}
+						{# TODO: Maybe only use normal name not qualname? #}
+						{% set lnk = base | link %}
+						{% set a_tag, _ = lnk.split('">') %}
+						{% set _, href = a_tag.split('href="') %}
+						<a class="is-white" href="{{ href }}">
+							{{ symbol_icontext({'type': 'class', 'name': base[1] + ":"}) }}
+						</a>
+					</td>
+					<td>
+						<div class="columns is-multiline is-mobile">
+							{% for x in members if is_public(x) %}
+								<div class="column is-narrow has-text-weight-bold">
+									{% set lnk = x.taken_from | link %}
+									{% set a_tag, _ = lnk.split('">') %}
+									{% set _, href = a_tag.split('href="') %}
+									<a href="{{ href }}">
+										{{ symbol_icontext(x) }}
+									</a>
+								</div>
+							{% endfor %}
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		{% endfor %}
+		</table>
+	{% endif %}
 {% enddefaultmacro %}
 {% defaultmacro member(doc, last, parent=None) %}
 	{% set dt_classes = "mt-5" %}
@@ -166,18 +217,17 @@
 	{% set xs = [] %}
 	{% if doc.type == "class" %}
 		{#- Add own members -#}
-		{% for x in doc.own_members if x.type != "class" and is_public(x) | trim %}
+		{% for x in doc.own_members if x.type != "class" and is_public(x) %}
 			{% set _ = xs.append(x) %}
 		{% endfor %}
 		{#- Add inherited members -#}
-		{% for base,members in doc.inherited_members.items() %}
-			{% for x in members if x.type != "class" and is_public(x) | trim %}
-				{#- This is dirtier than ... ehhh -#}
-				{% set _ = x.__setattr__('inherited', true) %}
-				{% set _ = x.__setattr__('base', base) %}
+		{#- TODO: (inherit) not for now. better to have them separate.
+		{% for base, members in doc.inherited_members.items() %}
+			{% for x in members if x.type != "class" and is_public(x) %}
 				{% set _ = xs.append(x) %}
 			{% endfor %}
 		{% endfor %}
+		-#}
 	{% endif %}
 	{% if doc.type not in ["variable", "module"] %}
 		{%- set viewsource = view_source(doc) -%}
@@ -189,6 +239,7 @@
 				{{ viewsource }}
 				{% if doc.type == "class" %}
 					{{ module_content(xs, parent=doc) }}
+					{{ inherited_members(doc) }}
 				{% endif %}
 			</div>
 		{% else %}
@@ -234,24 +285,6 @@
     {% elif doc.name.startswith("_") %}
         true
     {% endif %}
-{% enddefaultmacro %}
-{% defaultmacro inherited(cls) %}
-    {% for base, members in cls.inherited_members.items() %}
-        {% set m = None %}{# workaround for https://github.com/pallets/jinja/issues/1427 #}
-        {% set member_html %}
-            {% for m in members if is_public(m) | trim %}
-                <div id="{{ m.qualname }}" class="{{ m.type }}">
-                    {{- m.taken_from | link(text=m.name.replace("__init__",base[1])) -}}
-                </div>
-            {% endfor %}
-        {% endset %}
-        {# we may not have any public members, in which case we don't want to print anything. #}
-        {% if member_html %}
-            <div>{{ base | link }}
-                {{ member_html }}
-            </div>
-        {% endif %}
-    {% endfor %}
 {% enddefaultmacro %}
 {% defaultmacro view_source(doc) %}
     {% if show_source and doc.source %}
@@ -363,14 +396,13 @@
 		{{- doc.qualname or doc.name -}}
 	{%- endif -%}
 {% enddefaultmacro -%}
-{% defaultmacro symbol_icontext(doc, name=None) -%}
-	{% set classes = [] %}
+{% defaultmacro symbol_icontext(doc, name=None, classes="", icon_classes="", text_classes="") -%}
 	{% if is_private(doc) %}
-		{% set _ = classes.append("has-text-grey-light") %}
+		{% set classes = classes + " " + "has-text-grey-light" %}
 	{% endif %}
-	<span class="icon-text is-flex-wrap-nowrap {{' '.join(classes)}}">
-        <span class="icon"><i class="{{symbol_icon(doc)}}"></i></span>
-		<span class="is-family-code">{{name or symbol_name(doc)}}
+	<span class="icon-text is-flex-wrap-nowrap {{ classes }}">
+        <span class="icon {{icon_classes}}"><i class="{{symbol_icon(doc)}}"></i></span>
+		<span class="is-family-code {{text_classes}}">{{name or symbol_name(doc)}}
 		{%- if doc.type == "function" -%}
 			<span class="has-text-grey-light">()</span>
 		{%- endif -%}
@@ -382,7 +414,7 @@
 {% enddefaultmacro %}
 {% defaultmacro navlist(xs, label=None) -%}
     {% if xs %}
-		{#- Check if all members are private. In that case we hide the whole list. -#}
+		{#- Check if all members are private. In that case we add the hide tag to the whole list. -#}
 		{% set public_members = [] %}
 		{% for x in xs if not is_private(x) %}
 			{% set _ = public_members.append(x) %}
@@ -408,7 +440,7 @@
 		{% set xs = xs | sort(attribute=sort) %}
 	{% endif %}
 
-	{#- Check if all members are private. In that case we hide the whole list. -#}
+	{#- Check if all members are private. In that case we add the hide tag to the whole list. -#}
 	{% set public_members = [] %}
 	{% for x in xs if not is_private(x) %}
 		{% set _ = public_members.append(x) %}
@@ -429,6 +461,22 @@
 {% defaultmacro hide_private(doc) -%}
 	{{ 'pdoc-is-private' if is_private(doc) else '' }}
 {%- enddefaultmacro %}
+{% defaultmacro navlist_entry(doc, name=None, href=None) -%}
+	<li class="{{ hide_private(doc) }}">
+		<a href="{{ href or ('#' + doc.qualname) }}" class="p-1">
+			<span class="is-flex-wrap-nowrap level">
+				{{ symbol_icontext(doc, name=name) }}
+				{# TODO: (inherit) doc.inherited is wrong, but somehow this information is already available.
+				{%- if doc.inherited -%}
+					<div class="level-right">
+						<span class="tag level-item is-grey ml-auto">Inherited</span>
+					</div>
+				{%- endif -%}
+				#}
+			</span>
+		</a>
+	</li>
+{%- enddefaultmacro %}
 {% defaultmacro member_navlist(xs, parent=None, nestlevel=0, except=[]) -%}
 	{% if 'module' not in except %}
 		{% call(m) for_member_navlist_filter(xs, type="module", label=divider_button("Submodules", "#section-submodules"), parent=parent, nestlevel=nestlevel) %}
@@ -438,19 +486,19 @@
 			{% set a_tag, rest = lnk.split('">') %}
 			{% set _, href = a_tag.split('href="') %}
 			{% set name, _ = rest.split('</a>') %}
-			<li class="{{ hide_private(m) }}"><a href="{{ href }}" class="p-1">{{ symbol_icontext(m, name=name) }}</a></li>
+			{{ navlist_entry(m, name=name, href=href) }}
 		{% endcall %}
 	{% endif %}
 
 	{% if 'variable' not in except %}
 		{% call(m) for_member_navlist_filter(xs, type="variable", label=divider_button("Variables", "#section-variables"), parent=parent, nestlevel=nestlevel) %}
-			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+			{{ navlist_entry(m) }}
 		{% endcall %}
 	{% endif %}
 
 	{% if 'function' not in except %}
 		{% call(m) for_member_navlist_filter(xs, type="function", sort="name", label=divider_button("Functions", "#section-functions"), parent=parent, nestlevel=nestlevel) %}
-			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
+			{{ navlist_entry(m) }}
 		{% endcall %}
 	{% endif %}
 
@@ -458,10 +506,19 @@
 		{% call(m) for_member_navlist_filter(xs, type="class", sort="name", label=divider_button("Classes", "#section-classes"), parent=parent, nestlevel=nestlevel) %}
 			<li class="mt-3 {{ hide_private(m) }}">
 				<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
-				{{ member_navlist(m.own_members, parent=m, nestlevel=nestlevel+1, except=['class']) }}
-				{# TODO: with inherited members (make another toggle)
-				{{ member_navlist(m.members.values(), parent=m, nestlevel=nestlevel+1, except=['class']) }}
-				#}
+				{% set xs = [] %}
+				{#- Add own members -#}
+				{% for x in m.own_members if x.type != "class" and is_public(x) %}
+					{% set _ = xs.append(x) %}
+				{% endfor %}
+				{#- Add inherited members -#}
+				{#- TODO: (inherit) not for now. better to have them separate.
+				{% for base, members in m.inherited_members.items() %}
+					{% for x in members if x.type != "class" and is_public(x) %}
+						{% set _ = xs.append(x) %}
+					{% endfor %}
+				{% endfor %} -#}
+				{{ member_navlist(xs, parent=m, nestlevel=nestlevel+1, except=['class']) }}
 			</li>
 		{% endcall %}
 	{% endif %}
@@ -475,7 +532,7 @@
 		{% set xs = xs | sort(attribute=sort) %}
 	{% endif %}
 
-	{#- Check if all members are private. In that case we hide the whole list. -#}
+	{#- Check if all members are private. In that case we add the hide tag to the whole list. -#}
 	{% set public_members = [] %}
 	{% for x in xs if not is_private(x) %}
 		{% set _ = public_members.append(x) %}
@@ -506,14 +563,10 @@
 				<hr class="mb-6">
 				{# TODO: headerlink #}
 				{# TODO: all links to internal parts such as sections hould never clash with members of the module. #}
-				<div class="content">
-					<h3>
-					<span class="icon-text is-flex-wrap-nowrap">
-						<span class="icon ml-1 mr-4"><i class="{{ icon }}"></i></span>
-						<span class="is-family-monospace">{{ section_name }}</span>
-					</span>
-					</h3>
-				</div>
+				<span class="title is-4 icon-text is-flex-wrap-nowrap">
+					<span class="icon ml-1 mr-4"><i class="{{ icon }}"></i></span>
+					<span class="is-family-monospace">{{ section_name }}</span>
+				</span>
 				<dl>
 					{% for x in xs %}
 						{{ caller(x, loop.last) }}
@@ -580,7 +633,6 @@
 				{% endblock %}
 
 				{% block nav_module_contents %}
-					{# TODO: Test this #}
 					{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
 					{% if index %}
 						<div class="divider mb-3 is-left">Contents</div>
@@ -626,18 +678,14 @@
 		{% endblock %}
 		{% block module_info %}
 			<section class="section py-0 my-6">
-				<div class="content">
-					<h3>
-					<span class="icon-text is-flex-wrap-nowrap">
-						<span class="icon ml-1 mr-4"><i class="{{ symbol_icon(module) }}"></i></span>
-						{#-
-						{% set parts = module.fullname.split(".") %}
-						<span class="is-family-monospace">Module <span>{{ '.'.join(parts[:-1]) + ('.' if parts|length > 1 else '') }}</span><span class="has-text-danger">{{ parts[-1] }}</span></span>
-						-#}
-						<span class="is-family-monospace">Module <span class="has-text-danger">{{ module.name }}</span></span>
-					</span>
-					</h3>
-				</div>
+				<span class="title is-4 icon-text is-flex-wrap-nowrap">
+					<span class="icon ml-1 mr-4"><i class="{{ symbol_icon(module) }}"></i></span>
+					{#-
+					{% set parts = module.fullname.split(".") %}
+					<span class="is-family-monospace">Module <span>{{ '.'.join(parts[:-1]) + ('.' if parts|length > 1 else '') }}</span><span class="has-text-danger">{{ parts[-1] }}</span></span>
+					-#}
+					<span class="is-family-monospace">Module <span class="has-text-danger">{{ module.name }}</span></span>
+				</span>
 				{{ docstring(module) }}
 				{{ view_source(module) }}
 			</section>
