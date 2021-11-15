@@ -1,4 +1,5 @@
 {# TODO: dark theme switch in top navbar that scrolls away? #}
+{# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
 {% extends "frame.html.jinja2" %}
 {% block title %}{{ module.modulename }} API documentation{% endblock %}
 {% block style %}
@@ -8,8 +9,21 @@
 		<style>
 		{# TODO: this is shit do it in scss #}
 		.pdoc-is-private {display: none; }
+		nav.pdoc-navbar {
+			position: sticky;
+			vertical-align: top;
+			max-height: 100vh;
+			overflow-y: auto;
+			top: 0;
+			bottom: 0;
+			padding: 30px;
+			scrollbar-width: thin;
+			scrollbar-color: inherit transparent;
+		}
 		pre.definition {
 			font-size: 0.85rem !important;
+			scrollbar-width: thin;
+			scrollbar-color: inherit transparent;
 		}
   .button.is-white-transparent {
     background-color: transparent;
@@ -69,7 +83,7 @@
 	<pre class="p-2 definition">
 		{{- decorators(fn) -}}
 		{#- no space -#}
-		<span class="icon is-small mr-1"><span class="{{ symbol_icon(fn) }} has-text-grey-light"></span></span>
+		<span class="icon is-small mr-1"><span class="{{ symbol_icon(fn) }}"></span></span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-black">{{ fn.funcdef }}</span>
 		{#- no space -#}
@@ -109,27 +123,29 @@
 		{#- no space -#}
 		{{- decorators(cls) -}}
 		{#- no space -#}
+		<span class="icon is-small mr-1"><span class="{{ symbol_icon(cls) }}"></span></span>
+		{#- no space -#}
 		<span class="has-text-weight-bold has-text-black">class</span>
 		{#- no space -#}
 		<span class="has-text-weight-bold"> </span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-danger">{{ cls.qualname }}</span>
 		{#- no space -#}
-		<span class="has-text-weight-bold">{{- bases(cls) -}}</span>
+		<span class="has-text-weight-bold">{{- bases(cls) -}}:</span>
 		{#- no space -#}
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro member(doc, last, parent=None) %}
 	{% set dt_classes = "mt-5" %}
 	{% set dd_classes = "mb-4" %}
-	{% set body_classes = "pl-5 " + ("pt-3" if parent else "pt-5") %}
+	{% set body_classes = "ml-5 mt-3" %}
 
-	{% if parent or doc.type == "module" %}
+	{% if parent %}
 		{% set dt_classes = "" %}
 	{% endif %}
 	{% if doc.type == "module" %}
 		{% set dd_classes = "" %}
-		{% set body_classes = "pl-6 pb-5 pt-3" %}
+		{% set body_classes = "ml-5 mt-3" %}
 	{% endif %}
 	{% if doc.type == "class" %}
 		{% set dt_classes = "mt-6" %}
@@ -149,8 +165,18 @@
 	{% set docstr = docstring(doc) %}
 	{% set xs = [] %}
 	{% if doc.type == "class" %}
+		{#- Add own members -#}
 		{% for x in doc.own_members if x.type != "class" and is_public(x) | trim %}
 			{% set _ = xs.append(x) %}
+		{% endfor %}
+		{#- Add inherited members -#}
+		{% for base,members in doc.inherited_members.items() %}
+			{% for x in members if x.type != "class" and is_public(x) | trim %}
+				{#- This is dirtier than ... ehhh -#}
+				{% set _ = x.__setattr__('inherited', true) %}
+				{% set _ = x.__setattr__('base', base) %}
+				{% set _ = xs.append(x) %}
+			{% endfor %}
 		{% endfor %}
 	{% endif %}
 	{% if doc.type not in ["variable", "module"] %}
@@ -163,17 +189,13 @@
 				{{ viewsource }}
 				{% if doc.type == "class" %}
 					{{ module_content(xs, parent=doc) }}
-					{% set inherited_members = inherited(doc) | trim %}
-					{% if inherited_members %}
-						<div>
-							<h5>Inherited Members</h5>
-							{{ inherited_members }}
-						</div>
-					{% endif %}
 				{% endif %}
 			</div>
 		{% else %}
 			{{ viewsource }}
+		{% endif %}
+		{% if doc.type == "class" and not parent and not last %}
+			<hr>
 		{% endif %}
 	</dd>
 {% enddefaultmacro %}
@@ -408,20 +430,32 @@
 	{{ 'pdoc-is-private' if is_private(doc) else '' }}
 {%- enddefaultmacro %}
 {% defaultmacro member_navlist(xs, parent=None, nestlevel=0, except=[]) -%}
+	{% if 'module' not in except %}
+		{% call(m) for_member_navlist_filter(xs, type="module", label=divider_button("Submodules", "#section-submodules"), parent=parent, nestlevel=nestlevel) %}
+			{# TODO: This is really awful. But we require a better link() function to solve it. #}
+			{# TODO: Maybe only use normal name not qualname? #}
+			{% set lnk = m.taken_from | link %}
+			{% set a_tag, rest = lnk.split('">') %}
+			{% set _, href = a_tag.split('href="') %}
+			{% set name, _ = rest.split('</a>') %}
+			<li class="{{ hide_private(m) }}"><a href="{{ href }}" class="p-1">{{ symbol_icontext(m, name=name) }}</a></li>
+		{% endcall %}
+	{% endif %}
+
 	{% if 'variable' not in except %}
-		{% call(m) for_member_navlist_filter(xs, type="variable", label=divider_button("Variables", "#variables"), parent=parent, nestlevel=nestlevel) %}
+		{% call(m) for_member_navlist_filter(xs, type="variable", label=divider_button("Variables", "#section-variables"), parent=parent, nestlevel=nestlevel) %}
 			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
 		{% endcall %}
 	{% endif %}
 
 	{% if 'function' not in except %}
-		{% call(m) for_member_navlist_filter(xs, type="function", sort="name", label=divider_button("Functions", "#functions"), parent=parent, nestlevel=nestlevel) %}
+		{% call(m) for_member_navlist_filter(xs, type="function", sort="name", label=divider_button("Functions", "#section-functions"), parent=parent, nestlevel=nestlevel) %}
 			<li class="{{ hide_private(m) }}"><a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a></li>
 		{% endcall %}
 	{% endif %}
 
 	{% if 'class' not in except %}
-		{% call(m) for_member_navlist_filter(xs, type="class", sort="name", label=divider_button("Classes", "#classes"), parent=parent, nestlevel=nestlevel) %}
+		{% call(m) for_member_navlist_filter(xs, type="class", sort="name", label=divider_button("Classes", "#section-classes"), parent=parent, nestlevel=nestlevel) %}
 			<li class="mt-3 {{ hide_private(m) }}">
 				<a href="#{{ m.qualname }}" class="p-1">{{ symbol_icontext(m) }}</a>
 				{{ member_navlist(m.own_members, parent=m, nestlevel=nestlevel+1, except=['class']) }}
@@ -468,9 +502,10 @@
 
     {% if xs %}
 		{% if not parent %}
-			<hr class="{{ hide }} mx-6">
-			<section class="{{ hide }} section" id="{{ section_id }}">
+			<section class="{{ hide }} section py-0 my-6" id="section-{{ section_id }}">
+				<hr class="mb-6">
 				{# TODO: headerlink #}
+				{# TODO: all links to internal parts such as sections hould never clash with members of the module. #}
 				<div class="content">
 					<h3>
 					<span class="icon-text is-flex-wrap-nowrap">
@@ -523,7 +558,7 @@
 {% macro define_nav() -%}
 	{% block nav %}
 		{# TODO: the overflow should be hidden if the navbar is fullwidth . #}
-		<nav class="menu" style="position: sticky; vertical-align: top; max-height: 100vh; overflow-y: auto; top: 0; bottom: 0; padding: 30px;">
+		<nav class="menu pdoc-navbar">
 			<div>
 				{% block nav_title %}
 					{% if logo %}
@@ -575,20 +610,8 @@
 					{% endif %}
 				{% endblock %}
 
-				{% block nav_submodules %}
-					{% call(m) navlist(module.submodules, label=divider_button("Submodules", "#submodules")) %}
-						{# TODO: This is really awful. But we require a better link() function to solve it. #}
-						{# TODO: Maybe only use normal name not qualname? #}
-						{% set lnk = m.taken_from | link %}
-						{% set a_tag, rest = lnk.split('">') %}
-						{% set _, href = a_tag.split('href="') %}
-						{% set name, _ = rest.split('</a>') %}
-						<li class="{{ hide_private(m) }}"><a href="{{ href }}" class="p-1">{{ symbol_icontext(m, name=name) }}</a></li>
-					{% endcall %}
-				{% endblock %}
-
 				{% block nav_member_list %}
-					{{ member_navlist(module.flattened_own_members) }}
+					{{ member_navlist(module.submodules + module.flattened_own_members) }}
 				{% endblock %}
 			</div>
 		</nav>
@@ -602,7 +625,7 @@
 			</div>
 		{% endblock %}
 		{% block module_info %}
-			<section class="section">
+			<section class="section py-0 my-6">
 				<div class="content">
 					<h3>
 					<span class="icon-text is-flex-wrap-nowrap">
@@ -620,8 +643,7 @@
 			</section>
 		{% endblock %}
 		{% block module_contents %}
-			{{ module_content(module.submodules) }}
-			{{ module_content(module.flattened_own_members) }}
+			{{ module_content(module.submodules + module.flattened_own_members) }}
 		{% endblock %}
 	{% endblock %}
 {%- endmacro %}
