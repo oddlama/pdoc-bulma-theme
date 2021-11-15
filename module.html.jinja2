@@ -1,4 +1,5 @@
 {# TODO: dark theme switch in top navbar that scrolls away? #}
+{# TODO: globals.base_remote_settings seems to have called __str__ ... not so nice for definitoins. better use source code? #}
 {# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
 {% extends "frame.html.jinja2" %}
 {% block title %}{{ module.modulename }} API documentation{% endblock %}
@@ -8,7 +9,32 @@
         <style>{% include 'syntax-highlighting.css' %}</style>
 		<style>
 		{# TODO: this is shit do it in scss #}
-		.pdoc-is-private {display: none; }
+		.pdoc-is-private { display: none; }
+		.anchor-title, .anchor-title-always-left {
+			position: relative;
+		}
+		.anchor-link, .anchor-link-always-left {
+			position: absolute;
+			right: calc(100% + 1rem);
+			top: 0;
+		}
+		.classbox {
+			background-color: white;
+			border-radius: 6px;
+			box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0px 0 1px rgba(10, 10, 10, 0.02);
+			color: #4a4a4a;
+			display: block;
+			overflow: hidden;
+		}
+		@media screen and (max-width:1024px) {
+			.anchor-link {
+				left: 0;
+				right: auto;
+			}
+			.anchor-title {
+				padding-left: 1em;
+			}
+		}
 		nav.pdoc-navbar {
 			position: sticky;
 			vertical-align: top;
@@ -70,17 +96,21 @@
         <div class="decorator">{{ d | escape | linkify }}</div>
     {%- endfor -%}
 {% enddefaultmacro %}
-{% defaultmacro headerlink(doc) -%}
-    <a class="headerlink" href="#{{ doc.qualname }}">#&nbsp;&nbsp</a>
+{% defaultmacro anchor_link(href_or_doc) -%}
+	{% set href = href_or_doc %}
+	{% if href_or_doc.qualname %}
+		{% set href = "#" + href_or_doc.qualname %}
+	{% endif %}
+	<a class="anchor-link" href="{{ href }}">#</a>
 {% enddefaultmacro %}
 {% defaultmacro function(fn) -%}
-	{# TODO: <div class="attr function">{{ headerlink(fn) }} #}
+	{{ anchor_link(fn) }}
 	{%- set name = fn.name -%}
 	{%- set signature = fn.signature -%}
 	{%- if fn.name == "__init__" -%}
 		{%- set signature = fn.signature_without_self -%}
 	{%- endif -%}
-	<pre class="p-2 definition">
+	<pre class="p-2 highlight definition">
 		{{- decorators(fn) -}}
 		{#- no space -#}
 		<span class="icon is-small mr-1"><span class="{{ symbol_icon(fn) }}"></span></span>
@@ -96,7 +126,8 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro variable(var) %}
-	<pre class="p-2 definition">
+	{{ anchor_link(var) }}
+	<pre class="p-2 highlight definition">
 		{#- no space -#}
 		<span class="icon is-small mr-1"><span class="{{ symbol_icon(var) }}"></span></span>
 		{#- no space -#}
@@ -109,7 +140,8 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro submodule(mod) %}
-	<pre class="p-2 definition">
+	{{ anchor_link(mod) }}
+	<pre class="p-2 highlight definition">
 		{#- no space -#}
 		<span class="icon is-small mr-1"><span class="{{ symbol_icon({'type': 'module', 'qualname': mod.taken_from[0] }) }}"></span></span>
 		{#- no space -#}
@@ -118,9 +150,9 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro class(cls) %}
-	{# TODO: {{ headerlink(cls) }}#}
+	{{ anchor_link(cls) }}
 	{# TODO: shorten links in pre #}
-	<pre class="p-2 definition">
+	<pre class="p-2 highlight definition">
 		{#- no space -#}
 		{{- decorators(cls) -}}
 		{#- no space -#}
@@ -153,40 +185,81 @@
 	{% if inherited|length > 0 %}
 		<div class="divider is-left">Inherited Members</div>
 		<table class="table">
-		{% for base, members in inherited %}
 			<tbody>
-				<tr>
-					<td class="has-text-weight-bold">
-						{# TODO: This is really awful. But we require a better link() function to solve it. #}
-						{# TODO: Maybe only use normal name not qualname? #}
-						{% set lnk = base | link %}
-						{% set a_tag, _ = lnk.split('">') %}
-						{% set _, href = a_tag.split('href="') %}
-						<a class="is-white" href="{{ href }}">
-							{{ symbol_icontext({'type': 'class', 'name': base[1] + ":"}) }}
-						</a>
-					</td>
-					<td>
-						<div class="columns is-multiline is-mobile">
-							{% for x in members if is_public(x) %}
-								<div class="column is-narrow has-text-weight-bold">
-									{% set lnk = x.taken_from | link %}
-									{% set a_tag, _ = lnk.split('">') %}
-									{% set _, href = a_tag.split('href="') %}
-									<a href="{{ href }}">
-										{{ symbol_icontext(x) }}
-									</a>
+				{% for base, members in inherited %}
+					{#- Check if all inherited members of this base are private. In that case we add the hide tag to the whole table row. -#}
+					{% set base_public_members = [] %}
+					{% for x in members if not is_private(x) %}
+						{% set _ = base_public_members.append(x) %}
+					{% endfor %}
+					{% set hide_row = 'pdoc-is-private' if not base_public_members else '' %}
+
+					<tr class="{{ hide_row }}">
+						<td class="has-text-weight-bold">
+							<div class="m-0 columns is-multiline is-mobile">
+								<div class="p-0 column is-narrow">
+									{# TODO: This is really awful. But we require a better link() function to solve it. #}
+									{% set lnk = base | link %}
+									{% set symbol_content = symbol_icontext({'type': 'class', 'name': base[1] + ":"}) %}
+									{% if '">' in lnk %}
+										{% set a_tag, _ = lnk.split('">') %}
+										{% set _, href = a_tag.split('href="') %}
+										<a class="button is-white" href="{{ href }}">
+											{{ symbol_content }}
+										</a>
+									{% else %}
+										<button class="button is-white" disabled>
+											{{ symbol_content }}
+										</button>
+									{% endif %}
 								</div>
+							</div>
+						</td>
+						<td>
+							{% for t in ["class", "module", "variable", "function"] %}
+								{% set xs = [] %}
+								{% for x in members if x.type == t and is_public(x) %}
+									{% set _ = xs.append(x) %}
+								{% endfor %}
+
+								{% if xs %}
+									{#- Check if all members are private. In that case we add the hide tag to the whole list. -#}
+									{% set public_members = [] %}
+									{% for x in xs if not is_private(x) %}
+										{% set _ = public_members.append(x) %}
+									{% endfor %}
+									{% set hide = 'pdoc-is-private' if not public_members else '' %}
+
+									<div class="{{ hide }} m-0 columns is-multiline is-mobile">
+										{% for x in xs | sort(attribute='name') %}
+											<div class="{{ hide_private(x) }} p-0 column is-narrow has-text-weight-bold">
+												{# TODO: This is really awful. But we require a better link() function to solve it. #}
+												{% set lnk = x.taken_from | link %}
+												{% if '">' in lnk %}
+													{% set a_tag, _ = lnk.split('">') %}
+													{% set _, href = a_tag.split('href="') %}
+													<a class="button px-4 py-2 is-white" href="{{ href }}">
+														{{ symbol_icontext(x) }}
+													</a>
+												{% else %}
+													<button class="button px-4 py-2 is-white" disabled>
+														{{ symbol_icontext(x) }}
+													</button>
+												{% endif %}
+											</div>
+										{% endfor %}
+									</div>
+								{% endif %}
 							{% endfor %}
-						</div>
-					</td>
-				</tr>
+						</td>
+					</tr>
+				{% endfor %}
 			</tbody>
-		{% endfor %}
 		</table>
 	{% endif %}
 {% enddefaultmacro %}
 {% defaultmacro member(doc, last, parent=None) %}
+	{% set div_classes = "" %}
 	{% set dt_classes = "mt-5" %}
 	{% set dd_classes = "mb-4" %}
 	{% set body_classes = "ml-5 mt-3" %}
@@ -199,56 +272,59 @@
 		{% set body_classes = "ml-5 mt-3" %}
 	{% endif %}
 	{% if doc.type == "class" %}
-		{% set dt_classes = "mt-6" %}
+		{% set div_classes = "classbox my-6" %}
+		{% set dt_classes = "px-2 py-1 has-background-white-ter" %}
 	{% endif %}
-
-	<dt class="{{ hide_private(doc) }} {{ dt_classes }}" id="{{ doc.qualname or doc.name }}">
+	{% if doc.type == "class" and not last %}
+	{% endif %}
+	<div class="{{ div_classes }}">
+		<dt class="{{ hide_private(doc) }} {{ dt_classes }}" id="{{ doc.qualname or doc.name }}">
+			{% if doc.type == "class" %}
+				{{ class(doc) }}
+			{% elif doc.type == "function" %}
+				{{ function(doc) }}
+			{% elif doc.type == "module" %}
+				{{ submodule(doc) }}
+			{% else %}
+				{{ variable(doc) }}
+			{% endif %}
+		</dt>
+		{% set docstr = docstring(doc) %}
+		{% set xs = [] %}
 		{% if doc.type == "class" %}
-			{{ class(doc) }}
-		{% elif doc.type == "function" %}
-			{{ function(doc) }}
-		{% elif doc.type == "module" %}
-			{{ submodule(doc) }}
-		{% else %}
-			{{ variable(doc) }}
-		{% endif %}
-	</dt>
-	{% set docstr = docstring(doc) %}
-	{% set xs = [] %}
-	{% if doc.type == "class" %}
-		{#- Add own members -#}
-		{% for x in doc.own_members if x.type != "class" and is_public(x) %}
-			{% set _ = xs.append(x) %}
-		{% endfor %}
-		{#- Add inherited members -#}
-		{#- TODO: (inherit) not for now. better to have them separate.
-		{% for base, members in doc.inherited_members.items() %}
-			{% for x in members if x.type != "class" and is_public(x) %}
+			{#- Add own members -#}
+			{% for x in doc.own_members if x.type != "class" and is_public(x) %}
 				{% set _ = xs.append(x) %}
 			{% endfor %}
-		{% endfor %}
-		-#}
-	{% endif %}
-	{% if doc.type not in ["variable", "module"] %}
-		{%- set viewsource = view_source(doc) -%}
-	{% endif %}
-	<dd class="{{ hide_private(doc) }} {{ dd_classes }}">
-		{% if (doc.type != "class" and docstr) or xs|length > 0 %}
-			<div class="{{ body_classes }}">
-				{{ docstr }}
+			{#- Add inherited members -#}
+			{#- TODO: (inherit) not for now. better to have them separate.
+			{% for base, members in doc.inherited_members.items() %}
+				{% for x in members if x.type != "class" and is_public(x) %}
+					{% set _ = xs.append(x) %}
+				{% endfor %}
+			{% endfor %}
+			-#}
+		{% endif %}
+		{% if doc.type not in ["variable", "module"] %}
+			{%- set viewsource = view_source(doc) -%}
+		{% endif %}
+		<dd class="{{ hide_private(doc) }} {{ dd_classes }}">
+			{% if (doc.type != "class" and docstr) or xs %}
+				<div class="{{ body_classes }}">
+					{{ docstr }}
+					{{ viewsource }}
+					{% if doc.type == "class" %}
+						{{ module_content(xs, parent=doc) }}
+						{{ inherited_members(doc) }}
+					{% endif %}
+				</div>
+			{% else %}
 				{{ viewsource }}
-				{% if doc.type == "class" %}
-					{{ module_content(xs, parent=doc) }}
-					{{ inherited_members(doc) }}
-				{% endif %}
-			</div>
-		{% else %}
-			{{ viewsource }}
-		{% endif %}
-		{% if doc.type == "class" and not parent and not last %}
-			<hr>
-		{% endif %}
-	</dd>
+			{% endif %}
+			{% if doc.type == "class" and not parent and not last %}
+			{% endif %}
+		</dd>
+	</div>
 {% enddefaultmacro %}
 {% defaultmacro docstring(var) %}
     {% if var.docstring %}
@@ -357,7 +433,7 @@
 			{% set submodules = doc.submodules %}
 		{%- endif -%}
 
-		{%- if submodules|length > 0 -%}
+		{%- if submodules -%}
 			fa-solid fa-cubes
 		{%- else -%}
 			fa-solid fa-cube
@@ -419,7 +495,7 @@
 		{% for x in xs if not is_private(x) %}
 			{% set _ = public_members.append(x) %}
 		{% endfor %}
-		{% set hide = 'pdoc-is-private' if public_members|length == 0 else '' %}
+		{% set hide = 'pdoc-is-private' if not public_members else '' %}
 
         {% if label %}
 			<div class="{{ hide }} divider mb-3 is-left">{{ label }}</div>
@@ -445,7 +521,7 @@
 	{% for x in xs if not is_private(x) %}
 		{% set _ = public_members.append(x) %}
 	{% endfor %}
-	{% set hide = 'pdoc-is-private' if public_members|length == 0 else '' %}
+	{% set hide = 'pdoc-is-private' if not public_members else '' %}
 
     {% if xs %}
         {% if label and nestlevel == 0 %}
@@ -537,7 +613,7 @@
 	{% for x in xs if not is_private(x) %}
 		{% set _ = public_members.append(x) %}
 	{% endfor %}
-	{% set hide = 'pdoc-is-private' if public_members|length == 0 else '' %}
+	{% set hide = 'pdoc-is-private' if not public_members else '' %}
 
 	{% set icon = symbol_icon({'type': type}) %}
 	{% if type == "module" %}
@@ -561,12 +637,12 @@
 		{% if not parent %}
 			<section class="{{ hide }} section py-0 my-6" id="section-{{ section_id }}">
 				<hr class="mb-6">
-				{# TODO: headerlink #}
-				{# TODO: all links to internal parts such as sections hould never clash with members of the module. #}
-				<span class="title is-4 icon-text is-flex-wrap-nowrap">
-					<span class="icon ml-1 mr-4"><i class="{{ icon }}"></i></span>
-					<span class="is-family-monospace">{{ section_name }}</span>
-				</span>
+				<h2 class="title is-4 anchor-title">
+					<span class="is-flex-wrap-nowrap">
+						<span>{{ section_name }}</span>
+					</span>
+					{{ anchor_link("#section-" + section_id) }}
+				</h2>
 				<dl>
 					{% for x in xs %}
 						{{ caller(x, loop.last) }}
@@ -622,7 +698,7 @@
 				{% endblock %}
 
 				{% block nav_search_box %}
-					{% if search and all_modules|length > 1 %}
+					{% if search %}
 						<p class="control has-icons-right mb-5">
 							<input class="input" type="search" placeholder="Search..." required>
 							<span class="icon is-small is-right">
@@ -651,7 +727,7 @@
 								</a>
 							</li>
 						{% endcall %}
-					{% elif all_modules|length > 1 %}
+					{% elif all_modules %}
 						{% call(x) navlist([pm], label="Navigation") %}
 							<li>
 								<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
@@ -678,14 +754,18 @@
 		{% endblock %}
 		{% block module_info %}
 			<section class="section py-0 my-6">
-				<span class="title is-4 icon-text is-flex-wrap-nowrap">
-					<span class="icon ml-1 mr-4"><i class="{{ symbol_icon(module) }}"></i></span>
-					{#-
-					{% set parts = module.fullname.split(".") %}
-					<span class="is-family-monospace">Module <span>{{ '.'.join(parts[:-1]) + ('.' if parts|length > 1 else '') }}</span><span class="has-text-danger">{{ parts[-1] }}</span></span>
-					-#}
-					<span class="is-family-monospace">Module <span class="has-text-danger">{{ module.name }}</span></span>
-				</span>
+				<h1 class="title is-3 anchor-title">
+					<span class="is-flex-wrap-nowrap">
+						{#-
+						{% set parts = module.fullname.split(".") %}
+						<span class="is-family-monospace">Module <span>{{ '.'.join(parts[:-1]) + ('.' if parts|length > 1 else '') }}</span><span class="has-text-danger">{{ parts[-1] }}</span></span>
+						-#}
+						<span class="">Module</span>
+						<span> </span>
+						<span class="is-family-monospace has-text-danger">{{ module.name }}</span>
+					</span>
+					{{ anchor_link("#") }}
+				</h1>
 				{{ docstring(module) }}
 				{{ view_source(module) }}
 			</section>
@@ -714,7 +794,7 @@
 				{% include "livereload.html.jinja2" %}
 			{% endif %}
 			{% block search_js %}
-				{% if search and all_modules|length > 1 %}
+				{% if search %}
 					{% include "search.html.jinja2" %}
 				{% endif %}
 			{% endblock %}
