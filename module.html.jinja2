@@ -6,7 +6,7 @@
 {% block style %}
 	{{ super() | safe }}
     {% filter minify_css %}
-        <style>{% include 'syntax-highlighting.css' %}</style>
+		{#<style>{% include 'syntax-highlighting.css' %}</style>#}
 		<style>
 		{# TODO: this is shit do it in scss #}
 		.pdoc-is-private { display: none; }
@@ -50,7 +50,6 @@
 			font-size: 0.85rem;
 			scrollbar-width: thin;
 			scrollbar-color: inherit transparent;
-			box-sizing: border-box;
 		}
 		.rounded-border {
 			border-radius: 6px;
@@ -101,13 +100,6 @@
         <div class="decorator">{{ d | escape | linkify }}</div>
     {%- endfor -%}
 {% enddefaultmacro %}
-{% defaultmacro anchor_link(href_or_doc, classes="") -%}
-	{% set href = href_or_doc %}
-	{% if href_or_doc.qualname %}
-		{% set href = "#" + href_or_doc.qualname %}
-	{% endif %}
-	<a class="anchor-link {{ classes }}" href="{{ href }}">#</a>
-{% enddefaultmacro %}
 {% defaultmacro function(doc) -%}
 	{%- set name = doc.name -%}
 	{%- set signature = doc.signature -%}
@@ -118,7 +110,7 @@
 	<pre class="p-2 highlight rounded-border definition">
 		{{- decorators(doc) -}}
 		{#- no space -#}
-		<span class="icon is-small mr-1"><span class="{{ symbol_icon(doc) }}"></span></span>
+		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-black">{{ doc.funcdef }}</span>
 		{#- no space -#}
@@ -134,7 +126,7 @@
 {% defaultmacro variable(doc) %}
 	<pre class="p-2 highlight rounded-border definition">
 		{#- no space -#}
-		<span class="icon is-small mr-1"><span class="{{ symbol_icon(doc) }}"></span></span>
+		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-danger">{{ doc.name }}</span>
 		{#- no space -#}
@@ -159,7 +151,8 @@
 		{#- no space -#}
 		{{- decorators(doc) -}}
 		{#- no space -#}
-		<span class="icon is-small mr-1"><span class="{{ symbol_icon(doc) }}"></span></span>
+		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
+		{#- no space -#}
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-black">class</span>
 		{#- no space -#}
@@ -271,8 +264,7 @@
 		{% set member_classes = "px-2 py-1 has-background-white-ter" %}
 	{% endif %}
 
-	<div id="{{ doc.qualname or doc.name }}" class="{{ div_classes }} anchor-title"> {# remove anchor title here, instead make on hover link appear inside the box! #}
-		{{ anchor_link(doc, classes=hide_private(doc)) }}
+	<div id="{{ doc.qualname or doc.name }}" class="{{ div_classes }}">
 		<div class="{{ hide_private(doc) }} {{ member_classes }}">
 			{% if doc.type == "class" %}
 				{{ class(doc) }}
@@ -291,14 +283,6 @@
 			{% for x in doc.own_members if x.type != "class" and is_public(x) %}
 				{% set _ = xs.append(x) %}
 			{% endfor %}
-			{#- Add inherited members -#}
-			{#- TODO: (inherit) not for now. better to have them separate.
-			{% for base, members in doc.inherited_members.items() %}
-				{% for x in members if x.type != "class" and is_public(x) %}
-					{% set _ = xs.append(x) %}
-				{% endfor %}
-			{% endfor %}
-			-#}
 		{% endif %}
 		{% if (doc.type != "class" and docstr) or xs %}
 			<div class="{{ hide_private(doc) }} mx-5 mb-5 mt-4">
@@ -585,13 +569,6 @@
 				{% for x in m.own_members if x.type != "class" and is_public(x) %}
 					{% set _ = xs.append(x) %}
 				{% endfor %}
-				{#- Add inherited members -#}
-				{#- TODO: (inherit) not for now. better to have them separate.
-				{% for base, members in m.inherited_members.items() %}
-					{% for x in members if x.type != "class" and is_public(x) %}
-						{% set _ = xs.append(x) %}
-					{% endfor %}
-				{% endfor %} -#}
 				{{ member_navlist(xs, parent=m, nestlevel=nestlevel+1, except=['class']) }}
 			</li>
 		{% endcall %}
@@ -639,7 +616,7 @@
 					<span class="is-flex-wrap-nowrap">
 						<span>{{ section_name }}</span>
 					</span>
-					{{ anchor_link("#section-" + section_id) }}
+					<a class="anchor-link" href="#section-{{ section_id }}">#</a>
 				</h2>
 				{% for x in xs %}
 					{{ caller(x, loop.last) }}
@@ -760,7 +737,7 @@
 						<span> </span>
 						<span class="is-family-monospace has-text-danger">{{ module.name }}</span>
 					</span>
-					{{ anchor_link("#") }}
+					<a class="anchor-link" href="#">#</a>
 				</h1>
 				{{ docstring(module) }}
 				{{ view_source(module) }}
