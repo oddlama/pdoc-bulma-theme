@@ -1,4 +1,5 @@
 {# TODO: dark theme switch in top navbar that scrolls away? #}
+{# TODO: test logo #}
 {# TODO: globals.base_remote_settings seems to have called __str__ ... not so nice for definitoins. better use source code? #}
 {# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
 {% extends "frame.html.jinja2" %}
@@ -6,7 +7,7 @@
 {% block style %}
 	{{ super() | safe }}
     {% filter minify_css %}
-		{#<style>{% include 'syntax-highlighting.css' %}</style>#}
+		<style>{% include 'css/syntax-highlighting.css' %}</style>
 		<style>
 		{# TODO: this is shit do it in scss #}
 		.pdoc-is-private { display: none; }
@@ -46,14 +47,16 @@
 			scrollbar-width: thin;
 			scrollbar-color: inherit transparent;
 		}
-		.definition {
-			font-size: 0.85rem;
-			scrollbar-width: thin;
-			scrollbar-color: inherit transparent;
-		}
 		.rounded-border {
 			border-radius: 6px;
 			box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.1);
+		}
+		.codehilite > pre {
+			font-size: 0.85rem;
+			padding: 0;
+			margin: 0;
+			scrollbar-width: thin;
+			scrollbar-color: inherit transparent;
 		}
   .button.is-white-transparent {
     background-color: transparent;
@@ -85,20 +88,10 @@
         )
     {%- endif -%}
 {% enddefaultmacro %}
-{% defaultmacro default_value(var) -%}
-    {%- if var.default_value_str -%}
-        <span class="default_value">{{ var.default_value_str | escape | linkify }}</span>
-    {%- endif -%}
-{% enddefaultmacro %}
-{% defaultmacro annotation(var) %}
-    {%- if var.annotation_str -%}
-        <span class="annotation">{{ var.annotation_str | escape | linkify }}</span>
-    {%- endif -%}
-{% enddefaultmacro %}
 {% defaultmacro decorators(doc) %}
-    {%- for d in doc.decorators if not d.startswith("@_") -%}
-        <div class="decorator">{{ d | escape | linkify }}</div>
-    {%- endfor -%}
+	{%- for d in doc.decorators if not d.startswith("@_") -%}
+		{{- d | highlight | linkify -}}
+	{%- endfor -%}
 {% enddefaultmacro %}
 {% defaultmacro function(doc) -%}
 	{%- set name = doc.name -%}
@@ -107,62 +100,69 @@
 		{%- set signature = doc.signature_without_self -%}
 	{%- endif -%}
 
-	<pre class="p-2 highlight rounded-border definition">
-		{{- decorators(doc) -}}
+	<pre class="p-2 codehilite rounded-border">
+		{#- no space -#}
+		<div style="white-space: normal">{{- decorators(doc) -}}</div>
 		{#- no space -#}
 		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
 		{#- no space -#}
-		<span class="has-text-weight-bold has-text-black">{{ doc.funcdef }}</span>
+		<span class="has-text-weight-bold">{{ doc.funcdef }}</span>
 		{#- no space -#}
 		<span class="has-text-weight-bold"> </span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-danger">{{ name }}</span>
 		{#- no space -#}
-		<span class="has-text-weight-bold has-text-black">{{ signature | escape | linkify }}:</span>
+		<span class="has-text-weight-bold">{{ signature | escape | linkify }}:</span>
 		{#- no space -#}
 	</pre>
 	{{ view_source_pre_above(doc) }}
 {% enddefaultmacro %}
 {% defaultmacro variable(doc) %}
-	<pre class="p-2 highlight rounded-border definition">
+	<pre class="p-2 codehilite rounded-border">
 		{#- no space -#}
 		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-danger">{{ doc.name }}</span>
 		{#- no space -#}
-		<span class="has-text-weight-bold has-text-black">{{ annotation(doc) }}</span>
+		{%- if doc.annotation_str -%}
+			<span class="has-text-weight-bold">{{ doc.annotation_str }}</span>
+		{%- endif -%}
 		{#- no space -#}
-		<span class="has-text-weight-bold has-text-black">{{ default_value(doc) }}</span>
+		{%- if doc.default_value_str -%}
+			{%- if '> at 0x' in doc.default_value_str -%}
+				<span class="has-text-weight-bold"> = &lt;redacted&gt;</span>
+			{%- else -%}
+				<div style="white-space: normal">{{- doc.default_value_str | escape | linkify -}}</div>
+			{%- endif -%}
+		{%- endif -%}
 		{#- no space -#}
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro submodule(doc) %}
-	<pre class="p-2 highlight rounded-border definition">
+	<pre class="p-2 codehilite rounded-border">
 		{#- no space -#}
 		<span class="icon is-small mr-1"><span class="{{ symbol_icon({'type': 'module', 'qualname': doc.taken_from[0] }) }}"></span></span>
 		{#- no space -#}
-		<span class="has-text-weight-bold has-text-black">{{ doc.taken_from | link }}</span>
+		<span class="has-text-weight-bold">{{ doc.taken_from | link }}</span>
 		{#- no space -#}
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro class(doc) %}
 	{# TODO: shorten links in pre #}
-	<pre class="p-2 highlight definition">
-		{#- no space -#}
+	<div class="p-2 codehilite">
 		{{- decorators(doc) -}}
-		{#- no space -#}
-		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
-		{#- no space -#}
-		{#- no space -#}
-		<span class="has-text-weight-bold has-text-black">class</span>
-		{#- no space -#}
-		<span class="has-text-weight-bold"> </span>
-		{#- no space -#}
-		<span class="has-text-weight-bold has-text-danger">{{ doc.qualname }}</span>
-		{#- no space -#}
-		<span class="has-text-weight-bold">{{- bases(doc) -}}:</span>
-		{#- no space -#}
-	</pre>
+		<pre>
+			{#- no space -#}
+			<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
+			{#- no space -#}
+			<span class="has-text-weight-bold">class </span>
+			{#- no space -#}
+			<span class="has-text-weight-bold has-text-danger">{{ doc.qualname }}</span>
+			{#- no space -#}
+			<span class="has-text-weight-bold">{{- bases(doc) -}}:</span>
+			{#- no space -#}
+		</pre>
+	</div>
 	{{ view_source_pre_above(doc) }}
 {% enddefaultmacro %}
 {% defaultmacro inherited_members(doc, last, parent=None) %}
@@ -721,7 +721,7 @@
 {% macro define_main_content() -%}
 	{% block main_content %}
 		{% block breadcrumbs %}
-			<div class="p-6">
+			<div class="px-6 my-6">
 				{{ breadcrumbs() }}
 			</div>
 		{% endblock %}
