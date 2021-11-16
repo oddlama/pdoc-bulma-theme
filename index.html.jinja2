@@ -1,15 +1,18 @@
 {% extends "module.html.jinja2" %}
-{% block title %}Module List &ndash; pdoc {{ __version__ }}{% endblock %}
-{% block nav_submodules %}
-	{% call(m) navlist(all_modules, label="Available Modules") %}
-		<li><a href="{{ m.replace(".","/") }}.html" class="p-1">
-			{{ symbol_icontext({'qualname': m, 'name': m, 'type': 'module'}) }}
-		</a></li>
-	{% endcall %}
-{% endblock %}
+{% block title %}Module List{% endblock %}
 {% block body %}{{ define_nav() }}{% endblock %}
 {% block nav_module_contents %}{% endblock %}
 {% block nav_parent_module %}{% endblock %}
-{% block nav_member_list %}{% endblock %}
+{% block nav_member_list %}
+	{% set xs = [] %}
+	{% for x in all_modules %}
+		{% set _ = xs.append({'qualname': x, 'name': x, 'type': 'module'}) %}
+	{% endfor %}
+	{% call(x) navlist(xs, label="Available Modules") %}
+		<li><a href="{{ x.name.replace(".","/") }}.html" class="p-1">
+			{{ symbol_icontext(x) }}
+		</a></li>
+	{% endcall %}
+{% endblock %}
 {% block module_info %}{% endblock %}
 {% block module_contents %}{% endblock %}

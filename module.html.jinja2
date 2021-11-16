@@ -1,7 +1,11 @@
 {# TODO: dark theme switch in top navbar that scrolls away? #}
+{# TODO: show on git button that highlights the code snippet on relevant git commit #}
+{# TODO: expand source code should have strip unnecesary levels of indentation #}
 {# TODO: test logo #}
 {# TODO: globals.base_remote_settings seems to have called __str__ ... not so nice for definitoins. better use source code? #}
 {# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
+{# TODO: shorten links in generated code e.g. mypackage.sub.Someclass should become Someclass for readability. At least when the referenced definition is from the same module. #}
+{# TODO: the left navbar is still based on some obscure column layout that sucks. ideally: bar has maxwith, and when it wraps to above the content, it should be fullwidth, as should be the content. #}
 {% extends "frame.html.jinja2" %}
 {% block title %}{{ module.modulename }} API documentation{% endblock %}
 {% block style %}
@@ -51,12 +55,44 @@
 			border-radius: 6px;
 			box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.1);
 		}
-		.codehilite > pre {
+		.content pre {
+			border-radius: 6px;
+			box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.1);
+			font-size: 0.85rem;
+			padding: .5rem .75rem !important;
+			margin-bottom: 1rem;
+			scrollbar-width: thin;
+			scrollbar-color: inherit transparent;
+		}
+		.codehilite:not(.content *) > pre {
 			font-size: 0.85rem;
 			padding: 0;
 			margin: 0;
 			scrollbar-width: thin;
 			scrollbar-color: inherit transparent;
+		}
+		code:not(pre *) {
+			padding: 0.125em 0.25em 0.125em;
+			border-radius: 6px;
+			box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.1);
+			color: inherit;
+		}
+		.nav-content li {
+			margin: 0.25rem;
+		}
+		.nav-content li a {
+			color: inherit;
+		}
+		.nav-content li a:hover {
+			color: #485fc7;
+		}
+		.nav-content > ul > li {
+			font-weight: 700;
+		}
+		.nav-content li ul {
+			font-weight: 400;
+			padding-left: 1rem;
+			margin-bottom: 0.5rem;
 		}
   .button.is-white-transparent {
     background-color: transparent;
@@ -89,9 +125,9 @@
     {%- endif -%}
 {% enddefaultmacro %}
 {% defaultmacro decorators(doc) %}
-	{%- for d in doc.decorators if not d.startswith("@_") -%}
-		{{- d | highlight | linkify -}}
-	{%- endfor -%}
+	{%- for d in doc.decorators if not d.startswith("@_") %}
+		{{- d | escape | linkify }}
+	{% endfor -%}
 {% enddefaultmacro %}
 {% defaultmacro function(doc) -%}
 	{%- set name = doc.name -%}
@@ -102,7 +138,7 @@
 
 	<pre class="p-2 codehilite rounded-border">
 		{#- no space -#}
-		<div style="white-space: normal">{{- decorators(doc) -}}</div>
+		<span class="has-text-weight-bold has-text-grey">{{- decorators(doc) -}}</span>
 		{#- no space -#}
 		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
 		{#- no space -#}
@@ -132,7 +168,7 @@
 			{%- if '> at 0x' in doc.default_value_str -%}
 				<span class="has-text-weight-bold"> = &lt;redacted&gt;</span>
 			{%- else -%}
-				<div style="white-space: normal">{{- doc.default_value_str | escape | linkify -}}</div>
+				<span class="has-text-weight-bold">{{- doc.default_value_str | escape | linkify -}}</span>
 			{%- endif -%}
 		{%- endif -%}
 		{#- no space -#}
@@ -148,10 +184,10 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro class(doc) %}
-	{# TODO: shorten links in pre #}
 	<div class="p-2 codehilite">
-		{{- decorators(doc) -}}
 		<pre>
+			{#- no space -#}
+			<span class="has-text-weight-bold has-text-grey">{{- decorators(doc) -}}</span>
 			{#- no space -#}
 			<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
 			{#- no space -#}
@@ -201,11 +237,11 @@
 									{% if '">' in lnk %}
 										{% set a_tag, _ = lnk.split('">') %}
 										{% set _, href = a_tag.split('href="') %}
-										<a class="button is-white" href="{{ href }}">
+										<a class="button is-white has-text-grey-dark" href="{{ href }}">
 											{{ symbol_content }}
 										</a>
 									{% else %}
-										<button class="button is-white" disabled>
+										<button class="button is-white has-text-grey-dark" disabled>
 											{{ symbol_content }}
 										</button>
 									{% endif %}
@@ -235,11 +271,11 @@
 												{% if '">' in lnk %}
 													{% set a_tag, _ = lnk.split('">') %}
 													{% set _, href = a_tag.split('href="') %}
-													<a class="button px-4 py-2 is-white" href="{{ href }}">
+													<a class="button px-4 py-2 is-white has-text-grey-dark" href="{{ href }}">
 														{{ symbol_icontext(x) }}
 													</a>
 												{% else %}
-													<button class="button px-4 py-2 is-white" disabled>
+													<button class="button px-4 py-2 is-white has-text-grey-dark" disabled>
 														{{ symbol_icontext(x) }}
 													</button>
 												{% endif %}
@@ -334,29 +370,23 @@
 {% defaultmacro view_source(doc) %}
     {% if show_source and doc.source %}
         <details class="mt-2" style="position: relative">
-			{#- TODO: fucking webdev. make summary go right without the whole width becoming the button. FFS. float right doesnt work either as the fucking content gets fucking stripped for it then. fuck. workaround is to use float and absolute position but then other content can overlay into it. meeeeeeh -#}
-			{#- TODO: dont -2.2 here. nononono -#}
-			{#- TODO: some docstrings are indented. no good. -#}
-			{#-
-			<summary class="is-inline mr-6" style="position: absolute; right: 0; z-index: 1; list-style: none">
-				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative">Expand Source</span>
-			</summary>
-			-#}
 			<summary style="position: absolute; right: 0">
 				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative">Expand Source</span>
 			</summary>
-			{{ doc.source | highlight }}
+			<div class="p-2 has-background-white-ter {{ "rounded-border" if doc.type != "class" else "" }}">
+				{{ doc.source | highlight }}
+			</div>
         </details>
     {% endif %}
 {% enddefaultmacro %}
 {% defaultmacro view_source_pre_above(doc) %}
 	{% if show_source and doc.source %}
 		<details style="position: relative">
-		{# TODO: properly fix element, and make pre content above exclude the summary button #}
+			{# TODO: properly fix element, and make pre content above exclude the summary button #}
 			<summary style="position: absolute; right: 0; top: -2rem">
 				<span class="button is-light is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative">Expand Source</span>
 			</summary>
-			<div class="{{ "rounded-border" if doc.type != "class" else "" }}">
+			<div class="p-2 has-background-white-ter {{ "rounded-border" if doc.type != "class" else "" }}">
 				{{ doc.source | highlight }}
 			</div>
 		</details>
@@ -685,28 +715,48 @@
 					{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
 					{% if index %}
 						<div class="divider mb-3 is-left">Contents</div>
-						{{ index | safe }}
+						<div class="nav-content">
+							{{ index | safe }}
+						</div>
 					{% endif %}
 				{% endblock %}
 
 				{% block nav_parent_module %}
+					{% set index = namespace() %}
+					{% set index.type = 'module' %}
+					{% set index.qualname = 'Index' %}
+					{% set index.name = 'Index' %}
+					{% set index.content %}
+						<li>
+							<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
+								{{ symbol_icontext({'name': 'Index', 'type': 'index'}) }}
+							</a>
+						</li>
+					{% endset %}
+
+					{% set xs = [] %}
 					{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
-					{% set pm = {'type': 'module', 'qualname': parentmodule, 'name': parentmodule.split('.')[-1]} %}
 					{% if parentmodule and parentmodule in all_modules %}
-						{% call(x) navlist([pm], label="Parent Module") %}
+						{% set pm = namespace() %}
+						{% set pm.type = 'module' %}
+						{% set pm.qualname = parentmodule %}
+						{% set pm.name = parentmodule.split('.')[-1] %}
+						{% set pm.content %}
 							<li>
-								<a href="../{{ x.qualname.split(".")[-1] }}.html" class="p-1">
-									{{ symbol_icontext(x) }}
+								<a href="../{{ pm.qualname.split(".")[-1] }}.html" class="p-1">
+									{{ symbol_icontext(pm, name=pm.qualname + ' (parent)') }}
 								</a>
 							</li>
-						{% endcall %}
+						{% endset %}
+
+						{% set xs = [index, pm] %}
 					{% elif all_modules %}
-						{% call(x) navlist([pm], label="Navigation") %}
-							<li>
-								<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
-									{{ symbol_icontext({'name': 'Index', 'type': 'index'}) }}
-								</a>
-							</li>
+						{% set xs = [index] %}
+					{% endif %}
+
+					{% if xs %}
+						{% call(x) navlist(xs, label="Navigation") %}
+							{{ x.content }}
 						{% endcall %}
 					{% endif %}
 				{% endblock %}
