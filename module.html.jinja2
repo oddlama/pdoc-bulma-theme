@@ -1,3 +1,6 @@
+{# TODO: make right side content max width. left minw maxw narrow, right auto #}
+{# TODO: built with footer looks ugly #}
+{# TODO: ensure that the message component is used when generating markdown content with admonitions #}
 {# TODO: dark theme switch in top navbar that scrolls away? #}
 {# TODO: show on git button that highlights the code snippet on relevant git commit #}
 {# TODO: expand source code should have strip unnecesary levels of indentation #}
@@ -50,6 +53,10 @@
 			padding: 30px;
 			scrollbar-width: thin;
 			scrollbar-color: inherit transparent;
+		}
+		.logo {
+			width: 144px;
+			height: 144px;
 		}
 		.rounded-border {
 			border-radius: 6px;
@@ -369,9 +376,9 @@
 {% enddefaultmacro %}
 {% defaultmacro view_source(doc) %}
     {% if show_source and doc.source %}
-        <details class="mt-2" style="position: relative">
+        <details class="mt-2 is-relative">
 			<summary style="position: absolute; right: 0">
-				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative">Expand Source</span>
+				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold is-relative">Expand Source</span>
 			</summary>
 			<div class="p-2 has-background-white-ter {{ "rounded-border" if doc.type != "class" else "" }}">
 				{{ doc.source | highlight }}
@@ -381,10 +388,10 @@
 {% enddefaultmacro %}
 {% defaultmacro view_source_pre_above(doc) %}
 	{% if show_source and doc.source %}
-		<details style="position: relative">
+		<details class="is-relative">
 			{# TODO: properly fix element, and make pre content above exclude the summary button #}
 			<summary style="position: absolute; right: 0; top: -2rem">
-				<span class="button is-light is-uppercase has-text-grey is-size-7 has-text-weight-semibold" style="position: relative">Expand Source</span>
+				<span class="button is-light is-uppercase has-text-grey is-size-7 has-text-weight-semibold is-relative">Expand Source</span>
 			</summary>
 			<div class="p-2 has-background-white-ter {{ "rounded-border" if doc.type != "class" else "" }}">
 				{{ doc.source | highlight }}
@@ -694,9 +701,15 @@
 			<div>
 				{% block nav_title %}
 					{% if logo %}
-						{% if logo_link %}<a href="{{ logo_link }}">{% endif %}
-						<img src="{{ logo }}" class="logo" alt="project logo"/>
-						{% if logo_link %}</a>{% endif %}
+						<div class="columns is-centered">
+							{% if logo_link %}<a href="{{ logo_link }}">{% endif %}
+								<div class="column is-narrow">
+									<figure class="image logo">
+										<img src="https://upload.wikimedia.org/wikipedia/commons/4/4f/SVG_Logo.svg" class="" alt="project logo">
+									</figure>
+								</div>
+							{% if logo_link %}</a>{% endif %}
+						</div>
 					{% endif %}
 				{% endblock %}
 
