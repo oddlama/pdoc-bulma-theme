@@ -1,14 +1,11 @@
 {% macro attribution() -%}
-	{# TODO: make icon grey and text more subtle. add a switch whether the version should be included. #}
 	{% block attribution %}
 		<div class="section has-text-centered">
-			<a title="pdoc: Python API documentation generator" href="https://pdoc.dev">
-				<span class="icon-text">
+			<a class="attribution has-text-hover-link" title="pdoc: Python API documentation generator" href="https://pdoc.dev">
+				<span>
 					built with <span class="is-hidden">pdoc</span>
-					<span class="icon has-text-grey-light">
-						<img alt="pdoc logo" src="data:image/svg+xml, {%- filter urlencode %}{% include "pdoc-logo.svg" %}{% endfilter %}"/>
-					</span>
 				</span>
+				<img alt="pdoc logo" src="data:image/svg+xml, {%- filter urlencode %}{% include "pdoc-logo.svg" %}{% endfilter %}"/>
 			</a>
 		</div>
 	{% endblock %}

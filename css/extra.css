@@ -103,9 +103,27 @@ code:not(pre *) {
 	box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.1);
 	color: inherit;
 }
+.attribution {
+	opacity: 0.5;
+	filter: grayscale(100%);
+	transition: all 100ms;
+}
+.attribution:hover {
+	opacity: 1;
+	filter: grayscale(0%);
+}
+.attribution img {
+	margin-left: .25em;
+	vertical-align: middle;
+	height: 35px;
+	width: 70px;
+}
 .pre-wrap {
 	white-space: pre-wrap;
 	word-break: break-word; }
+.has-text-hover-link:hover {
+	color: hsl(217, 71%, 53%);
+}
 .hover-has-background-grey:hover {
 	background-color: hsl(0, 0%, 86%); }
 .nav-content li {
