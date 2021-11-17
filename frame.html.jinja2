@@ -28,6 +28,8 @@
 	{% block style %}
 		{% filter minify_css %}
 			<style>{% include 'css/main.css' %}</style>
+			<style>{% include 'css/extra.css' %}</style>
+			<style>{% include 'css/syntax-highlighting.css' %}</style>
 		{% endfilter %}
 	{% endblock %}
 </head>
