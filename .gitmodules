@@ -1,0 +1,9 @@
+[submodule "bulma-divider"]
+	path = bulma-divider
+	url = https://github.com/CreativeBulma/bulma-divider
+[submodule "bulma"]
+	path = bulma
+	url = https://github.com/jgthms/bulma
+[submodule "bulma-switch"]
+	path = bulma-switch
+	url = https://github.com/Wikiki/bulma-switch
