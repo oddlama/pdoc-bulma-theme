@@ -1,6 +1,6 @@
 {# CAN DO #}
-{# TODO: search no worky #}
-{# TODO: dark theme switch in top navbar that scrolls away? #}
+{# TODO: move css to file #}
+{# TODO: search no worky in index #}
 {# TODO: built with footer looks ugly #}
 {# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
 {# PER PROJECT #}
@@ -124,6 +124,11 @@
 			box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.1);
 			color: inherit;
 		}
+		.pre-wrap {
+			white-space: pre-wrap;
+			word-break: break-word; }
+		.hover-has-background-grey:hover {
+			background-color: hsl(0, 0%, 86%); }
 		.nav-content li {
 			margin: 0.25rem; }
 		.nav-content li a {
@@ -747,7 +752,7 @@
 			{% block nav_search_box %}
 				{% if search %}
 					<p class="control has-icons-right my-5">
-						<input class="input" type="search" placeholder="Search..." required>
+						<input class="input search-content" type="search" placeholder="Search..." required>
 						<span class="icon is-small is-right">
 							<i class="fa-solid fa-magnifying-glass"></i>
 						</span>
