@@ -77,7 +77,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 .codehilite .nf  { color: var(--blue) } /* Name.Function */
 .codehilite .nl  { color: var(--red) } /* Name.Label */
 .codehilite .nn  { color: var(--fg) } /* Name.Namespace */
-.codehilite .nt  { color: var(--fg); font-weight: bold } /* Name.Tag */
+.codehilite .nt  { color: var(--red); font-weight: bold } /* Name.Tag */
+.codehilite .p   { color: var(--light_grey) }
 .codehilite .nv  { color: var(--fg) } /* Name.Variable */
 .codehilite .ow  { color: var(--purple); font-weight: bold } /* Operator.Word */
 .codehilite .w   { color: var(--fg) } /* Text.Whitespace */
@@ -86,7 +87,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 .codehilite .mh  { color: var(--orange) } /* Literal.Number.Hex */
 .codehilite .mi  { color: var(--orange) } /* Literal.Number.Integer */
 .codehilite .mo  { color: var(--orange) } /* Literal.Number.Oct */
-.codehilite .sa  { color: var(--grey) } /* Literal.String.Affix */
+.codehilite .sa  { color: var(--light_grey) } /* Literal.String.Affix */
 .codehilite .sb  { color: var(--green) } /* Literal.String.Backtick */
 .codehilite .sc  { color: var(--green) } /* Literal.String.Char */
 .codehilite .dl  { color: var(--green) } /* Literal.String.Delimiter */
@@ -99,8 +100,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 .codehilite .sr  { color: var(--green) } /* Literal.String.Regex */
 .codehilite .s1  { color: var(--green) } /* Literal.String.Single */
 .codehilite .ss  { color: var(--green) } /* Literal.String.Symbol */
-.codehilite .bp  { color: var(--fg) } /* Name.Builtin.Pseudo */
-.codehilite .fm  { color: var(--fg) } /* Name.Function.Magic */
+.codehilite .bp  { color: var(--red) } /* Name.Builtin.Pseudo */
+.codehilite .fm  { color: var(--cyan) } /* Name.Function.Magic */
 .codehilite .vc  { color: var(--fg) } /* Name.Variable.Class */
 .codehilite .vg  { color: var(--fg) } /* Name.Variable.Global */
 .codehilite .vi  { color: var(--fg) } /* Name.Variable.Instance */
