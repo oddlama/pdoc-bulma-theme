@@ -1,7 +1,6 @@
 {# CAN DO #}
 {# TODO: dark theme switch in top navbar that scrolls away? #}
 {# TODO: built with footer looks ugly #}
-{# TODO: toggle private members button #}
 {# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
 {# PER PROJECT #}
 {# TODO: minify result html #}
@@ -19,7 +18,6 @@
     {% filter minify_css %}
 		<style>{% include 'css/syntax-highlighting.css' %}</style>
 		<style>
-		{# TODO: this is shit do it in scss #}
 		.symbol-is-private { display: none; }
 		.anchor-title, .anchor-title-always-left {
 			position: relative;
@@ -46,7 +44,6 @@
 				padding-left: 1em;
 			}
 		}
-
 		.sidebar-layout {
 			display: flex;
 			width: 100%;
@@ -127,39 +124,34 @@
 			color: inherit;
 		}
 		.nav-content li {
-			margin: 0.25rem;
-		}
+			margin: 0.25rem; }
 		.nav-content li a {
-			color: inherit;
-		}
+			color: inherit; }
 		.nav-content li a:hover {
-			color: #485fc7;
-		}
+			color: #485fc7; }
 		.nav-content > ul > li {
-			font-weight: 700;
-		}
+			font-weight: 700; }
 		.nav-content li ul {
 			font-weight: 400;
 			padding-left: 1rem;
-			margin-bottom: 0.5rem;
-		}
-  .button.is-white-transparent {
-    background-color: transparent;
-    border-color: transparent;
-    color: #0a0a0a; }
-    .button.is-white-transparent:hover, .button.is-white-transparent.is-hovered {
-      background-color: #f9f9f9;
-      border-color: transparent;
-      color: #0a0a0a; }
-    .button.is-white-transparent:focus, .button.is-white-transparent.is-focused {
-      border-color: transparent;
-      color: #0a0a0a; }
-      .button.is-white-transparent:focus:not(:active), .button.is-white-transparent.is-focused:not(:active) {
-        box-shadow: 0 0 0 0.125em rgba(255, 255, 255, 0.25); }
-    .button.is-white-transparent:active, .button.is-white-transparent.is-active {
-      background-color: #f2f2f2;
-      border-color: transparent;
-      color: #0a0a0a; }
+			margin-bottom: 0.5rem; }
+		.button.is-white-transparent {
+			background-color: transparent;
+			border-color: transparent;
+			color: #0a0a0a; }
+		.button.is-white-transparent:hover, .button.is-white-transparent.is-hovered {
+			background-color: #f9f9f9;
+			border-color: transparent;
+			color: #0a0a0a; }
+		.button.is-white-transparent:focus, .button.is-white-transparent.is-focused {
+			border-color: transparent;
+			color: #0a0a0a; }
+		.button.is-white-transparent:focus:not(:active), .button.is-white-transparent.is-focused:not(:active) {
+			box-shadow: 0 0 0 0.125em rgba(255, 255, 255, 0.25); }
+		.button.is-white-transparent:active, .button.is-white-transparent.is-active {
+			background-color: #f2f2f2;
+			border-color: transparent;
+			color: #0a0a0a; }
 		</style>
     {% endfilter %}
 {% endblock %}
@@ -763,6 +755,21 @@
 			{% endblock %}
 
 			{% block nav_module_contents %}
+				<div class="field">
+					<input id="toggle-private-members" class="switch is-rounded is-info" type="checkbox">
+					<label for="toggle-private-members">Show private members</label>
+				</div>
+				<script>
+					var toggle_private = function(show) {
+						document.querySelectorAll('.symbol-is-private').forEach(function(e) {
+							e.style.display = show ? 'inherit' : 'none';
+						});
+					}
+					const toggle_private_members = document.getElementById('toggle-private-members')
+					toggle_private_members.addEventListener('change', (event) => {
+						toggle_private(event.currentTarget.checked);
+					})
+				</script>
 				{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
 				{% if index %}
 					<div class="divider mb-3 is-left">Contents</div>
@@ -775,12 +782,12 @@
 			{% block nav_parent_module %}
 				{% set index = namespace() %}
 				{% set index.type = 'module' %}
-				{% set index.qualname = 'Index' %}
-				{% set index.name = 'Index' %}
+				{% set index.qualname = 'Module Index' %}
+				{% set index.name = 'Module Index' %}
 				{% set index.content %}
 					<li>
 						<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
-							{{ symbol_icontext({'name': 'Index', 'type': 'index'}) }}
+							{{ symbol_icontext({'name': index.qualname, 'type': 'index'}) }}
 						</a>
 					</li>
 				{% endset %}

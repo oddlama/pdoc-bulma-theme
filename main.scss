@@ -10,9 +10,9 @@ $family-sans-serif: 'Lato', sans-serif;
 
 @import "bulma/bulma";
 @import "./bulma-divider/src/sass/index.sass";
+@import "./bulma-switch/src/sass/index.sass";
 
 .is-family-code {
   font-family: $family-code !important;
   font-size: 0.875rem !important;
 }
-
