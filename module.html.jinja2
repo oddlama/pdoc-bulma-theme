@@ -1,4 +1,5 @@
 {# CAN DO #}
+{# TODO: search no worky #}
 {# TODO: dark theme switch in top navbar that scrolls away? #}
 {# TODO: built with footer looks ugly #}
 {# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
@@ -769,6 +770,9 @@
 					toggle_private_members.addEventListener('change', (event) => {
 						toggle_private(event.currentTarget.checked);
 					})
+					document.addEventListener("DOMContentLoaded", function(){
+						toggle_private(toggle_private_members.checked);
+					});
 				</script>
 				{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
 				{% if index %}
