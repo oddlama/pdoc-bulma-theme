@@ -1,14 +1,17 @@
-{# TODO: make right side content max width. left minw maxw narrow, right auto #}
-{# TODO: built with footer looks ugly #}
-{# TODO: ensure that the message component is used when generating markdown content with admonitions #}
+{# CAN DO #}
 {# TODO: dark theme switch in top navbar that scrolls away? #}
-{# TODO: show on git button that highlights the code snippet on relevant git commit #}
-{# TODO: expand source code should have strip unnecesary levels of indentation #}
-{# TODO: test logo #}
-{# TODO: globals.base_remote_settings seems to have called __str__ ... not so nice for definitoins. better use source code? #}
+{# TODO: built with footer looks ugly #}
+{# TODO: toggle private members button #}
 {# TODO: links that point to private members should add a request param that overrides visibility (FOR THAT ITEM ONLY) #}
+{# PER PROJECT #}
+{# TODO: minify result html #}
+{# TODO: ensure that the message component is used when generating markdown content with admonitions #}
+{# TODO: variable definitions should not be evaluated #}
+{# NEEDS PDOC CODE #}
+{# TODO: expand source code should have strip unnecesary levels of indentation #}
+{# TODO: show on git button that highlights the code snippet on relevant git commit #}
+{# TODO: | highlight_linkify #}
 {# TODO: shorten links in generated code e.g. mypackage.sub.Someclass should become Someclass for readability. At least when the referenced definition is from the same module. #}
-{# TODO: the left navbar is still based on some obscure column layout that sucks. ideally: bar has maxwith, and when it wraps to above the content, it should be fullwidth, as should be the content. #}
 {% extends "frame.html.jinja2" %}
 {% block title %}{{ module.modulename }} API documentation{% endblock %}
 {% block style %}
@@ -17,7 +20,7 @@
 		<style>{% include 'css/syntax-highlighting.css' %}</style>
 		<style>
 		{# TODO: this is shit do it in scss #}
-		.pdoc-is-private { display: none; }
+		.symbol-is-private { display: none; }
 		.anchor-title, .anchor-title-always-left {
 			position: relative;
 		}
@@ -43,24 +46,65 @@
 				padding-left: 1em;
 			}
 		}
-		.pdoc-navbar {
-			position: sticky;
-			vertical-align: top;
-			max-height: 100vh;
+
+		.sidebar-layout {
+			display: flex;
+			width: 100%;
+		}
+		.sidebar-left {
+			padding: 1.5rem;
 			overflow-y: auto;
-			top: 0;
-			bottom: 0;
-			padding: 30px;
 			scrollbar-width: thin;
 			scrollbar-color: inherit transparent;
+
+			display: flex;
+			min-width: 480px;
+			width: 540px;
+			height: 100vh;
+			position: sticky;
+			top: 0;
+		}
+		.is-fullwidth {
+			width: 100%;
+		}
+		.main-content {
+			min-width: 480px;
+			width: 100%;
+		}
+		@media screen and (max-width:1200px) {
+			.sidebar-layout {
+				display: block;
+				width: 100%;
+			}
+			.sidebar-overflow-button {
+				visibility: visible;
+			}
+			.sidebar-left {
+				height: auto;
+				width: 100%;
+				position: relative;
+				top: auto;
+				/* instead - for collapsible fixed sidebar:
+				position: fixed;
+				top: 0;
+				left: 0;
+				height: 100vh;
+				background: white;
+				z-index: 999;
+				*/
+			}
 		}
 		.logo {
-			width: 144px;
-			height: 144px;
+			max-width: 144px;
+			max-height: 144px;
 		}
 		.rounded-border {
 			border-radius: 6px;
 			box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.1);
+		}
+		pre {
+			scrollbar-width: thin;
+			scrollbar-color: inherit transparent;
 		}
 		.content pre {
 			border-radius: 6px;
@@ -68,8 +112,6 @@
 			font-size: 0.85rem;
 			padding: .5rem .75rem !important;
 			margin-bottom: 1rem;
-			scrollbar-width: thin;
-			scrollbar-color: inherit transparent;
 		}
 		.codehilite:not(.content *) > pre {
 			font-size: 0.85rem;
@@ -232,7 +274,7 @@
 					{% for x in members if not is_private(x) %}
 						{% set _ = base_public_members.append(x) %}
 					{% endfor %}
-					{% set hide_row = 'pdoc-is-private' if not base_public_members else '' %}
+					{% set hide_row = 'symbol-is-private' if not base_public_members else '' %}
 
 					<tr class="{{ hide_row }}">
 						<td class="has-text-weight-bold">
@@ -268,7 +310,7 @@
 									{% for x in xs if not is_private(x) %}
 										{% set _ = public_members.append(x) %}
 									{% endfor %}
-									{% set hide = 'pdoc-is-private' if not public_members else '' %}
+									{% set hide = 'symbol-is-private' if not public_members else '' %}
 
 									<div class="{{ hide }} m-0 columns is-multiline is-mobile">
 										{% for x in xs | sort(attribute='name') %}
@@ -514,7 +556,7 @@
 		{% for x in xs if not is_private(x) %}
 			{% set _ = public_members.append(x) %}
 		{% endfor %}
-		{% set hide = 'pdoc-is-private' if not public_members else '' %}
+		{% set hide = 'symbol-is-private' if not public_members else '' %}
 
         {% if label %}
 			<div class="{{ hide }} divider mb-3 is-left">{{ label }}</div>
@@ -540,7 +582,7 @@
 	{% for x in xs if not is_private(x) %}
 		{% set _ = public_members.append(x) %}
 	{% endfor %}
-	{% set hide = 'pdoc-is-private' if not public_members else '' %}
+	{% set hide = 'symbol-is-private' if not public_members else '' %}
 
     {% if xs %}
         {% if label and nestlevel == 0 %}
@@ -554,7 +596,7 @@
     {% endif %}
 {%- enddefaultmacro %}
 {% defaultmacro hide_private(doc) -%}
-	{{ 'pdoc-is-private' if is_private(doc) else '' }}
+	{{ 'symbol-is-private' if is_private(doc) else '' }}
 {%- enddefaultmacro %}
 {% defaultmacro navlist_entry(doc, name=None, href=None) -%}
 	<li class="{{ hide_private(doc) }}">
@@ -625,7 +667,7 @@
 	{% for x in xs if not is_private(x) %}
 		{% set _ = public_members.append(x) %}
 	{% endfor %}
-	{% set hide = 'pdoc-is-private' if not public_members else '' %}
+	{% set hide = 'symbol-is-private' if not public_members else '' %}
 
 	{% set icon = symbol_icon({'type': type}) %}
 	{% if type == "module" %}
@@ -696,88 +738,83 @@
 {%- enddefaultmacro %}
 {% macro define_nav() -%}
 	{% block nav %}
-		{# TODO: the overflow should be hidden if the navbar is fullwidth . #}
-		<nav class="menu pdoc-navbar">
-			<div>
-				{% block nav_title %}
-					{% if logo %}
-						<div class="columns is-centered">
-							{% if logo_link %}<a href="{{ logo_link }}">{% endif %}
-								<div class="column is-narrow">
-									<figure class="image logo">
-										<img src="https://upload.wikimedia.org/wikipedia/commons/4/4f/SVG_Logo.svg" class="" alt="project logo">
-									</figure>
-								</div>
-							{% if logo_link %}</a>{% endif %}
-						</div>
-					{% endif %}
-				{% endblock %}
+		<nav class="is-fullwidth">
+			{% block nav_title %}
+				{% if logo %}
+					<div class="is-flex is-justify-content-center">
+						{% if logo_link %}<a href="{{ logo_link }}">{% endif %}
+							<figure class="image logo m-5">
+								<img src="{{ logo }}" alt="project logo">
+							</figure>
+						{% if logo_link %}</a>{% endif %}
+					</div>
+				{% endif %}
+			{% endblock %}
 
-				{% block nav_search_box %}
-					{% if search %}
-						<p class="control has-icons-right mb-5">
-							<input class="input" type="search" placeholder="Search..." required>
-							<span class="icon is-small is-right">
-								<i class="fa-solid fa-magnifying-glass"></i>
-							</span>
-						</p>
-					{% endif %}
-				{% endblock %}
+			{% block nav_search_box %}
+				{% if search %}
+					<p class="control has-icons-right my-5">
+						<input class="input" type="search" placeholder="Search..." required>
+						<span class="icon is-small is-right">
+							<i class="fa-solid fa-magnifying-glass"></i>
+						</span>
+					</p>
+				{% endif %}
+			{% endblock %}
 
-				{% block nav_module_contents %}
-					{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
-					{% if index %}
-						<div class="divider mb-3 is-left">Contents</div>
-						<div class="nav-content">
-							{{ index | safe }}
-						</div>
-					{% endif %}
-				{% endblock %}
+			{% block nav_module_contents %}
+				{% set index = module.docstring | to_markdown | to_html | attr("toc_html") %}
+				{% if index %}
+					<div class="divider mb-3 is-left">Contents</div>
+					<div class="nav-content">
+						{{ index | safe }}
+					</div>
+				{% endif %}
+			{% endblock %}
 
-				{% block nav_parent_module %}
-					{% set index = namespace() %}
-					{% set index.type = 'module' %}
-					{% set index.qualname = 'Index' %}
-					{% set index.name = 'Index' %}
-					{% set index.content %}
+			{% block nav_parent_module %}
+				{% set index = namespace() %}
+				{% set index.type = 'module' %}
+				{% set index.qualname = 'Index' %}
+				{% set index.name = 'Index' %}
+				{% set index.content %}
+					<li>
+						<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
+							{{ symbol_icontext({'name': 'Index', 'type': 'index'}) }}
+						</a>
+					</li>
+				{% endset %}
+
+				{% set xs = [] %}
+				{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
+				{% if parentmodule and parentmodule in all_modules %}
+					{% set pm = namespace() %}
+					{% set pm.type = 'module' %}
+					{% set pm.qualname = parentmodule %}
+					{% set pm.name = parentmodule.split('.')[-1] %}
+					{% set pm.content %}
 						<li>
-							<a href="{{ "../" * module.modulename.count(".") }}index.html" class="p-1">
-								{{ symbol_icontext({'name': 'Index', 'type': 'index'}) }}
+							<a href="../{{ pm.qualname.split(".")[-1] }}.html" class="p-1">
+								{{ symbol_icontext(pm, name=pm.qualname + ' (parent)') }}
 							</a>
 						</li>
 					{% endset %}
 
-					{% set xs = [] %}
-					{% set parentmodule = ".".join(module.modulename.split(".")[:-1]) %}
-					{% if parentmodule and parentmodule in all_modules %}
-						{% set pm = namespace() %}
-						{% set pm.type = 'module' %}
-						{% set pm.qualname = parentmodule %}
-						{% set pm.name = parentmodule.split('.')[-1] %}
-						{% set pm.content %}
-							<li>
-								<a href="../{{ pm.qualname.split(".")[-1] }}.html" class="p-1">
-									{{ symbol_icontext(pm, name=pm.qualname + ' (parent)') }}
-								</a>
-							</li>
-						{% endset %}
+					{% set xs = [index, pm] %}
+				{% elif all_modules %}
+					{% set xs = [index] %}
+				{% endif %}
 
-						{% set xs = [index, pm] %}
-					{% elif all_modules %}
-						{% set xs = [index] %}
-					{% endif %}
+				{% if xs %}
+					{% call(x) navlist(xs, label="Navigation") %}
+						{{ x.content }}
+					{% endcall %}
+				{% endif %}
+			{% endblock %}
 
-					{% if xs %}
-						{% call(x) navlist(xs, label="Navigation") %}
-							{{ x.content }}
-						{% endcall %}
-					{% endif %}
-				{% endblock %}
-
-				{% block nav_member_list %}
-					{{ member_navlist(module.submodules + module.flattened_own_members) }}
-				{% endblock %}
-			</div>
+			{% block nav_member_list %}
+				{{ member_navlist(module.submodules + module.flattened_own_members) }}
+			{% endblock %}
 		</nav>
 	{% endblock %}
 {%- endmacro %}
@@ -815,13 +852,11 @@
     {% if math %}{% include "math.html.jinja2" %}{% endif %}
 {% endblock %}
 {% block body %}
-    <div class="columns is-multiline is-fullheight">
-		{# TODO: if long items are in the sidebar, this shit wraps around too early. I want a reasonable automatic size limit for the sidebar. #}
-		<div class="column px-3 pb-0" style="max-width: 540px;">
+    <div class="sidebar-layout">
+		<div class="sidebar-left">
 			{{ define_nav() }}
 		</div>
-		{# TODO: after wraparound use all the space ffs #}
-		<div class="column is-8">
+		<div class="main-content">
 			<main class="container">
 				{{ define_main_content() }}
 			</main>
