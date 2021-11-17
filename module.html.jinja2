@@ -33,7 +33,7 @@
 		{%- set signature = doc.signature_without_self -%}
 	{%- endif -%}
 
-	<pre class="p-2 codehilite rounded-border">
+	<pre class="p-2 rounded-border">
 		{#- no space -#}
 		<span class="has-text-weight-bold has-text-grey">{{- decorators(doc) -}}</span>
 		{#- no space -#}
@@ -51,7 +51,7 @@
 	{{ view_source_pre_above(doc) }}
 {% enddefaultmacro %}
 {% defaultmacro variable(doc) %}
-	<pre class="p-2 codehilite rounded-border">
+	<pre class="p-2 rounded-border">
 		{#- no space -#}
 		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
 		{#- no space -#}
@@ -72,7 +72,7 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro submodule(doc) %}
-	<pre class="p-2 codehilite rounded-border">
+	<pre class="p-2 rounded-border">
 		{#- no space -#}
 		<span class="icon is-small mr-1"><span class="{{ symbol_icon({'type': 'module', 'qualname': doc.taken_from[0] }) }}"></span></span>
 		{#- no space -#}
@@ -81,21 +81,19 @@
 	</pre>
 {% enddefaultmacro %}
 {% defaultmacro class(doc) %}
-	<div class="p-2 codehilite">
-		<pre>
-			{#- no space -#}
-			<span class="has-text-weight-bold has-text-grey">{{- decorators(doc) -}}</span>
-			{#- no space -#}
-			<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
-			{#- no space -#}
-			<span class="has-text-weight-bold">class </span>
-			{#- no space -#}
-			<span class="has-text-weight-bold has-text-danger">{{ doc.qualname }}</span>
-			{#- no space -#}
-			<span class="has-text-weight-bold">{{- bases(doc) -}}:</span>
-			{#- no space -#}
-		</pre>
-	</div>
+	<pre class="px-4 py-2">
+		{#- no space -#}
+		<span class="has-text-weight-bold has-text-grey">{{- decorators(doc) -}}</span>
+		{#- no space -#}
+		<span class="icon is-small mr-1"><a href="#{{ doc.qualname }}"><span class="{{ symbol_icon(doc) }}"></span></a></span>
+		{#- no space -#}
+		<span class="has-text-weight-bold">class </span>
+		{#- no space -#}
+		<span class="has-text-weight-bold has-text-danger">{{ doc.qualname }}</span>
+		{#- no space -#}
+		<span class="has-text-weight-bold">{{- bases(doc) -}}:</span>
+		{#- no space -#}
+	</pre>
 	{{ view_source_pre_above(doc) }}
 {% enddefaultmacro %}
 {% defaultmacro inherited_members(doc, last, parent=None) %}
@@ -194,7 +192,7 @@
 
 	{% if doc.type == "class" %}
 		{% set div_classes = "classbox my-6" %}
-		{% set member_classes = "px-2 py-1 has-background-white-ter" %}
+		{% set member_classes = "py-1 has-background-white-ter" %}
 	{% endif %}
 
 	<div id="{{ doc.qualname or doc.name }}" class="{{ div_classes }}">
@@ -270,7 +268,7 @@
 			<summary style="position: absolute; right: 0">
 				<span class="button is-white-transparent is-uppercase has-text-grey is-size-7 has-text-weight-semibold is-relative">Expand Source</span>
 			</summary>
-			<div class="p-2 has-background-white-ter {{ "rounded-border" if doc.type != "class" else "" }}">
+			<div class="p-2 codehilite-bg {{ "rounded-border" if doc.type != "class" else "" }}">
 				{{ doc.source | highlight }}
 			</div>
         </details>
@@ -283,7 +281,7 @@
 			<summary style="position: absolute; right: 0; top: -2rem">
 				<span class="button is-light is-uppercase has-text-grey is-size-7 has-text-weight-semibold is-relative">Expand Source</span>
 			</summary>
-			<div class="p-2 has-background-white-ter {{ "rounded-border" if doc.type != "class" else "" }}">
+			<div class="p-2 codehilite-bg {{ "rounded-border" if doc.type != "class" else "" }}">
 				{{ doc.source | highlight }}
 			</div>
 		</details>
